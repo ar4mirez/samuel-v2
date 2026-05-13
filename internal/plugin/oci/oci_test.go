@@ -48,7 +48,7 @@ func (n *notFound) Error() string { return "no such image: " + n.image }
 
 func TestParseImageName(t *testing.T) {
 	cases := map[string]bool{
-		"ghcr.io/ar4mirez/samuel-runner:1.0.0":     true,
+		"ghcr.io/samuelpkg/samuel-runner:1.0.0":     true,
 		"docker.io/library/alpine:latest":          true,
 		"ghcr.io/owner/repo@sha256:" + strings.Repeat("a", 64): true,
 		"badspaces / x / y":                        false,
@@ -67,7 +67,7 @@ func TestOCI_InstallPullsAndDigestPins(t *testing.T) {
 	eng := &fakeEngine{digest: "sha256:deadbeef"}
 	m := manifest.Manifest{
 		Name: "claude-runner", Version: "1.0.0", Kind: manifest.KindOci,
-		OCI: &manifest.OCIBlock{Image: "ghcr.io/ar4mirez/samuel-runner-claude:1.0.0"},
+		OCI: &manifest.OCIBlock{Image: "ghcr.io/samuelpkg/samuel-runner-claude:1.0.0"},
 	}
 	p := New(m, t.TempDir(), eng, nil)
 	res, err := p.Install(context.Background(), plugin.InstallOptions{})

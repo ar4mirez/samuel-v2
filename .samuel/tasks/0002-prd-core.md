@@ -147,7 +147,7 @@ Per [[synthesis/orchestrator-as-plugin-loader]], v1's orchestrator IS v2's plugi
    # language/folder/skip overrides
 
    [[registries]]
-   default = "github.com/ar4mirez/samuel-registry"
+   default = "github.com/samuelpkg/samuel-registry"
    ```
 
 10. **`.samuel/` directory layout** at project root:

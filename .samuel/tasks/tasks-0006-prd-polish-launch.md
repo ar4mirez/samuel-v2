@@ -86,7 +86,7 @@
   - [ ] 9.3 Update CHANGELOG with v2.0.0 notes (consolidated from rc series)
 
 - [ ] 10.0 v1 deprecation prep [~3,000 tokens - Medium]
-  - [ ] 10.1 Tag `v1-final` at the last v1 commit in `github.com/ar4mirez/samuel` (preserves access via tag)
+  - [ ] 10.1 Tag `v1-final` at the last v1 commit in `github.com/samuelpkg/samuel` (preserves access via tag)
   - [ ] 10.2 Draft replacement README pointing to v2 with prominent v1-final tag link
   - [ ] 10.3 Verify install.sh script works from clean state
   - [ ] 10.4 Verify Homebrew tap formula update path
@@ -94,7 +94,7 @@
 - [ ] 11.0 v2.0.0 ship [~2,500 tokens - Medium]
   - [ ] 11.1 Final CHANGELOG cleanup
   - [ ] 11.2 Tag `v2.0.0` (signed); push
-  - [ ] 11.3 Force-push `github.com/ar4mirez/samuel` `main` to v2 code (after `v1-final` tag is in place)
+  - [ ] 11.3 Force-push `github.com/samuelpkg/samuel` `main` to v2 code (after `v1-final` tag is in place)
   - [ ] 11.4 Update Homebrew tap formula; verify `brew install samuel` lands v2.0.0
   - [ ] 11.5 Verify `curl -sSL <install.sh> | sh` installs v2.0.0 on clean macOS + Linux containers
   - [ ] 11.6 Trigger docs deploy to ar4mirez.github.io/samuel/

@@ -1,10 +1,10 @@
 #!/bin/sh
 # Samuel v2 installer
-# Usage: curl -sSL https://raw.githubusercontent.com/ar4mirez/samuel/main/install.sh | sh
+# Usage: curl -sSL https://raw.githubusercontent.com/samuelpkg/samuel/main/install.sh | sh
 
 set -e
 
-GITHUB_REPO="ar4mirez/samuel"
+GITHUB_REPO="samuelpkg/samuel"
 BINARY_NAME="samuel"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 

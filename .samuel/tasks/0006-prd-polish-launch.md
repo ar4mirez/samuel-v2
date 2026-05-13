@@ -43,7 +43,7 @@ Quality of these matters because v2 is a clean break — the launch must look in
 - **Docs site** restructured per [[synthesis/v2-template-and-docs]]: drop language/framework/workflow dirs, add `docs/concepts/` and `docs/plugin-authors/`, generate `docs/plugins/` from registry index.
 - **Migration notice from v1** at `samuel_v2/docs/getting-started/migration-v1.md` — not an upgrade guide, just "here's what's different and how to start fresh."
 - **Release**: v2.0.0-rc.2 → v2.0.0-rc.3 → v2.0.0 over a 2-3 week beta.
-- **v1 deprecation messaging**: the `github.com/ar4mirez/samuel` repo's README replaced with the v2 README; old v1 code preserved via `v1-final` tag.
+- **v1 deprecation messaging**: the `github.com/samuelpkg/samuel` repo's README replaced with the v2 README; old v1 code preserved via `v1-final` tag.
 
 ## Non-goals
 
@@ -111,7 +111,7 @@ Quality of these matters because v2 is a clean break — the launch must look in
    - For v1 plugin authors (theoretical): how to publish v2 plugins.
    - Calls out the clean-break stance explicitly.
 
-7. **v1 deprecation messaging** in `github.com/ar4mirez/samuel`:
+7. **v1 deprecation messaging** in `github.com/samuelpkg/samuel`:
    - On v2.0 release: force-push `main` to v2's code.
    - Tag `v1-final` at the last v1 commit before the push.
    - v1's README replaced with v2's README + deprecation notice ("v1 is preserved at the `v1-final` tag").
@@ -159,7 +159,7 @@ Quality of these matters because v2 is a clean break — the launch must look in
 - [ ] v2.0.0-rc.2 tag → goreleaser publishes signed artifacts.
 - [ ] After 1-week soak: v2.0.0-rc.3 tag, fixes incorporated.
 - [ ] After another week: v2.0.0 tag. Public announce.
-- [ ] `github.com/ar4mirez/samuel` `main` force-pushed to v2. `v1-final` tag preserved.
+- [ ] `github.com/samuelpkg/samuel` `main` force-pushed to v2. `v1-final` tag preserved.
 - [ ] `brew install samuel` installs v2.0.0.
 - [ ] `curl -sSL <install.sh> | sh` installs v2.0.0.
 - [ ] `samuel doctor` passes on a fresh `samuel init`.
@@ -172,7 +172,7 @@ Quality of these matters because v2 is a clean break — the launch must look in
 | AGENTS.md ≤150 lines breaks under full guardrails config | Medium | CI tests on a "maximum config" fixture. If breaks, prune content (move to docs) before launch. |
 | RFD writing takes longer than estimated (1 week budget) | Medium | RFDs are ports of wiki concept pages — ~2 hours each. Write in parallel. Drop "Outcome" section for v2.0 RFDs (post-implementation reflection comes later). |
 | v1 users complain about clean-break (no upgrade path) | High | Migration notice explains rationale. v1-final tag preserves access. v1 still installable from old releases. |
-| Force-push to `github.com/ar4mirez/samuel` breaks watchers / forks | High | Announce 1 week prior. Use `v1-final` tag. Document in migration notice. |
+| Force-push to `github.com/samuelpkg/samuel` breaks watchers / forks | High | Announce 1 week prior. Use `v1-final` tag. Document in migration notice. |
 | Docs `plugins/` page generation needs runtime data (registry index) | Medium | Generate at docs build time via a script that fetches `samuel-registry/index.toml`. Cache in CI. |
 | Translator plugins (claude + codex) not stable enough at launch | Medium | If unstable, ship `claude-translator` only; mark `codex-translator` as `0.x` experimental. Both prove the pattern; one is sufficient for launch. |
 | Mkdocs build fails on missing plugin docs | Low | Use `mkdocs build` without `--strict` for the plugins dir; warnings only. Address post-launch. |
@@ -212,7 +212,7 @@ Quality of these matters because v2 is a clean break — the launch must look in
 24. Tag v2.0.0-rc.2 + smoke test
 25. After 1 week: incorporate feedback, tag v2.0.0-rc.3
 26. After another week: tag v2.0.0
-27. Force-push `github.com/ar4mirez/samuel` (after `v1-final` tag)
+27. Force-push `github.com/samuelpkg/samuel` (after `v1-final` tag)
 28. Update Homebrew tap
 29. Publish migration notice prominently
 30. Write + publish announcement

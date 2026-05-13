@@ -7,6 +7,81 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.0-rc.1] — Skill Migration (Milestone 5)
+
+PRD: [0005-prd-skill-migration.md](.samuel/tasks/0005-prd-skill-migration.md)
+
+### Added
+
+- `scripts/migrate-v1-skills`: one-shot Go tool that ports
+  `samuel_v1/.claude/skills/*` into per-plugin source trees rooted at
+  `migration-output/samuel-<name>/`. Parses v1 SKILL.md frontmatter
+  (`metadata.category`, `metadata.language`, `metadata.extensions`,
+  `metadata.source`), generates a valid `samuel-plugin.toml` per skill,
+  copies `scripts/` `references/` `assets/` unchanged, and emits a
+  README, MIT LICENSE, and reusable-workflow release.yml stub for each.
+  `-dry-run` prints planned operations; the script is idempotent.
+  Excludes `initialize-project` + `update-framework` (no v2 analogue)
+  and the 7 `author: anthropic` skills (registered as upstream subpath
+  entries in the registry instead of being ported).
+- [`samuelpkg/samuel-plugin-release`](https://github.com/samuelpkg/samuel-plugin-release): reusable GitHub Actions workflow
+  consumed by every plugin repo. Dispatches on `kind` — `skill` → tar.gz
+  blob, `wasm` → TinyGo build, `oci` → docker buildx + GHCR push. All
+  artifacts cosign-signed via keyless OIDC. Plugin repos pin
+  `uses: samuelpkg/samuel-plugin-release/.github/workflows/release.yml@v1`.
+- [`samuelpkg/samuel-registry`](https://github.com/samuelpkg/samuel-registry): registry repo — `index.toml`
+  with 77 plugin entries (70 ported + 7 anthropic upstream), README and
+  CONTRIBUTING, and a `validate` workflow that schema-checks the index,
+  HEAD-checks every repo URL, and confirms each `latest` tag exists.
+- [`samuelpkg/samuel-starter`](https://github.com/samuelpkg/samuel-starter): meta-plugin (kind = `meta`) whose
+  `[requires]` declares the 12 Samuel-Way workflow plugins. Installed
+  by default on `samuel init`; opt-out via `--minimal` or
+  `--without <name>,<name>`.
+- [`samuelpkg/samuel-claude-translator`](https://github.com/samuelpkg/samuel-claude-translator): TinyGo source for the
+  WASM-tier translator plugin. Hooks `init.after` (writes
+  `.claude/settings.json` with PreToolUse stubs) and `sync.after`
+  (mirrors AGENTS.md → CLAUDE.md). Capabilities scoped to
+  `/workspace/**/CLAUDE.md` and `/workspace/.claude/**`.
+- [`samuelpkg/samuel-codex-translator`](https://github.com/samuelpkg/samuel-codex-translator): TinyGo source for the symmetric
+  Codex-flavored translator. Hooks `sync.after` and emits
+  `.codex/<rel>/context.md` per AGENTS.md.
+- `internal/plugin/manifest`: `KindMeta` is now a recognized plugin
+  kind. The validator requires meta plugins to declare a non-empty
+  `[requires]` block.
+- `internal/commands/plugin_admin`: `samuel plugin validate` and
+  `samuel plugin info` subcommands consumed by the reusable release
+  workflow (`samuel plugin validate samuel-plugin.toml`,
+  `samuel plugin validate --registry index.toml`,
+  `samuel plugin info --kind`, `--name`, `--version`).
+- `scripts/smoke-test.sh`: end-to-end acceptance script covering every
+  invariant in PRD 0005 §Acceptance — clean `samuel init`, language +
+  framework skill installs, both translator plugins, agnostic
+  invariant (no CLAUDE.md pre-translator-install), `--minimal`, and
+  `--without`. `--offline` mode skips registry-dependent steps.
+- `scripts/push-plugin-repo.sh`: deploy-side helper that takes one
+  generated tree and gets it onto GitHub (git init when missing,
+  always `git add -A`, commit only on drift, tag once, `gh repo
+  create` if absent, `git push`). Fail-loud — earlier drafts masked
+  the exit code through a pipe and silently dropped 52 of 70 plugins'
+  `.github/` and `references/` directories.
+- `scripts/patch-plugin-workflow.sh` + `scripts/ensure-plugin-workflow.sh`:
+  Contents-API helpers to repoint or create `release.yml` across many
+  plugin repos without cloning each one.
+- `scripts/sync-plugin-content.sh`: reconciliation helper that mirrors
+  the canonical generated tree on top of an existing samuelpkg/* repo,
+  used to recover the dropped content from the initial bulk push.
+
+### Notes
+
+- The 70 ported plugin repos live at `github.com/samuelpkg/samuel-<name>`.
+  They are not committed to this monorepo; regenerate locally on demand
+  under `migration-output/` (gitignored).
+- The reusable release workflow and auxiliary repos are at
+  `github.com/samuelpkg/{samuel-plugin-release,samuel-registry,samuel-starter,samuel-claude-translator,samuel-codex-translator}`.
+  Originally pushed under `ar4mirez/` and transferred to `samuelpkg/`
+  for org consolidation. GitHub redirects keep the old URLs working
+  until the new ones propagate everywhere.
+
 ## [v2.0.0-beta.2] — Methodology (Milestone 4)
 
 PRD: [0004-prd-methodology.md](.samuel/tasks/0004-prd-methodology.md)
@@ -243,6 +318,6 @@ PRD: [0001-prd-foundation.md](.samuel/tasks/0001-prd-foundation.md)
 - CI workflow + goreleaser config (homebrew tap disabled for the v2
   alpha line).
 
-[Unreleased]: https://github.com/ar4mirez/samuel/compare/v2.0.0-alpha.2...HEAD
-[v2.0.0-alpha.2]: https://github.com/ar4mirez/samuel/compare/v2.0.0-alpha.1...v2.0.0-alpha.2
-[v2.0.0-alpha.1]: https://github.com/ar4mirez/samuel/releases/tag/v2.0.0-alpha.1
+[Unreleased]: https://github.com/samuelpkg/samuel/compare/v2.0.0-alpha.2...HEAD
+[v2.0.0-alpha.2]: https://github.com/samuelpkg/samuel/compare/v2.0.0-alpha.1...v2.0.0-alpha.2
+[v2.0.0-alpha.1]: https://github.com/samuelpkg/samuel/releases/tag/v2.0.0-alpha.1

@@ -45,6 +45,11 @@ const (
 	KindSkill Kind = "skill"
 	KindWasm  Kind = "wasm"
 	KindOci   Kind = "oci"
+	// KindMeta is a payload-free plugin that exists solely to declare a
+	// [requires] graph. The loader resolves the deps and never copies
+	// content for the meta itself. Used by samuel-starter to bootstrap
+	// the Samuel Way workflow plugins on `samuel init`.
+	KindMeta Kind = "meta"
 )
 
 // Manifest is the parsed samuel-plugin.toml. Fields that are optional in
@@ -217,12 +222,12 @@ func (m *Manifest) Validate() error {
 		}
 	}
 	switch m.Kind {
-	case KindSkill, KindWasm, KindOci:
+	case KindSkill, KindWasm, KindOci, KindMeta:
 	case "":
 		return &errors.Error{
 			Component:   Component,
 			Problem:     "manifest missing required field 'kind'",
-			Fix:         "set `kind = \"skill\" | \"wasm\" | \"oci\"`",
+			Fix:         "set `kind = \"skill\" | \"wasm\" | \"oci\" | \"meta\"`",
 			DocsURL:     "https://ar4mirez.github.io/samuel/docs/errors/SAM-MANIFEST-001",
 			Recoverable: true,
 		}
@@ -230,7 +235,17 @@ func (m *Manifest) Validate() error {
 		return &errors.Error{
 			Component:   Component,
 			Problem:     fmt.Sprintf("invalid plugin kind %q", m.Kind),
-			Fix:         "kind must be one of: skill, wasm, oci",
+			Fix:         "kind must be one of: skill, wasm, oci, meta",
+			DocsURL:     "https://ar4mirez.github.io/samuel/docs/errors/SAM-MANIFEST-001",
+			Recoverable: true,
+		}
+	}
+
+	if m.Kind == KindMeta && len(m.Requires) == 0 {
+		return &errors.Error{
+			Component:   Component,
+			Problem:     "meta plugin must declare at least one entry in [requires]",
+			Fix:         "add `[requires]\\n<plugin-name> = \"^X.Y.Z\"`",
 			DocsURL:     "https://ar4mirez.github.io/samuel/docs/errors/SAM-MANIFEST-001",
 			Recoverable: true,
 		}

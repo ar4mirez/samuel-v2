@@ -102,7 +102,7 @@ func Defaults() *Config {
 			RequireTests:     true,
 		},
 		Registries: []Registry{
-			{Name: "official", URL: "github.com/ar4mirez/samuel-registry", Default: true},
+			{Name: "official", URL: "github.com/samuelpkg/samuel-registry", Default: true},
 		},
 	}
 }

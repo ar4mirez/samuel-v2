@@ -74,7 +74,7 @@ func buildService(projectDir string) (*service.Service, error) {
 			}
 		} else {
 			sources = []registry.Source{
-				{Name: "official", URL: "github.com/ar4mirez/samuel-registry"},
+				{Name: "official", URL: "github.com/samuelpkg/samuel-registry"},
 			}
 		}
 	}

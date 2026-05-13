@@ -6,7 +6,7 @@
 //	schema_version = 1
 //
 //	[plugin.go-guide]
-//	repo = "github.com/ar4mirez/samuel-go-guide"
+//	repo = "github.com/samuelpkg/samuel-go-guide"
 //	latest = "1.4.2"
 //	description = "Go language guardrails and patterns"
 //	categories = ["language"]

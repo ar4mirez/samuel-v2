@@ -38,7 +38,7 @@ Milestone 2 defined the `Plugin` interface and shipped one component (`SamuelCom
 - **Skill plugin tier** working: Git-fetch from GitHub, verify Sigstore signature, copy SKILL.md + assets to project.
 - **WASM plugin tier** working: wazero embedded in samuel binary, no host runtime required, sandboxed by design.
 - **OCI plugin tier** working: container runtime detection (Podman rootless → Docker), image pull, sandbox launch on demand.
-- **Plugin registry** at `github.com/ar4mirez/samuel-registry` with `index.toml` — fetched on `samuel search` / `samuel install`.
+- **Plugin registry** at `github.com/samuelpkg/samuel-registry` with `index.toml` — fetched on `samuel search` / `samuel install`.
 - **Capability model** enforced at install: user sees capabilities requested, grants explicitly (or via `--yes`).
 - **Sigstore verification** opt-in for v2.0; signed-by-default for the official registry, `--allow-unsigned` for dev.
 - **Lockfile records** resolved versions + capability grants + content hashes.
@@ -95,7 +95,7 @@ Milestone 2 defined the `Plugin` interface and shipped one component (`SamuelCom
 
      # kind = "oci" only:
      [oci]
-     image = "ghcr.io/ar4mirez/samuel-runner-claude:1.0.0"
+     image = "ghcr.io/samuelpkg/samuel-runner-claude:1.0.0"
      # digest set at install time
      ```
 
@@ -134,7 +134,7 @@ Milestone 2 defined the `Plugin` interface and shipped one component (`SamuelCom
      schema_version = 1
 
      [plugin.go-guide]
-     repo = "github.com/ar4mirez/samuel-go-guide"
+     repo = "github.com/samuelpkg/samuel-go-guide"
      latest = "1.4.2"
      description = "Go language guardrails and patterns"
      categories = ["language"]
@@ -203,7 +203,7 @@ Milestone 2 defined the `Plugin` interface and shipped one component (`SamuelCom
 
 ## Acceptance criteria
 
-- [x] `samuel install go-guide` fetches the plugin source, applies the signature policy, writes SKILL.md to `.samuel/plugins/go-guide/` — `internal/commands/plugins_test.go:TestCLI_InstallSkill_HappyPath` (real registry-fetched github.com/ar4mirez/samuel-go-guide install rides the v2.1 release-CI run that publishes the registry).
+- [x] `samuel install go-guide` fetches the plugin source, applies the signature policy, writes SKILL.md to `.samuel/plugins/go-guide/` — `internal/commands/plugins_test.go:TestCLI_InstallSkill_HappyPath` (real registry-fetched github.com/samuelpkg/samuel-go-guide install rides the v2.1 release-CI run that publishes the registry).
 - [x] `samuel install go-guide@^1.0.0` honors the version range — `internal/commands/plugins_test.go:TestCLI_InstallSkill_VersionRange`.
 - [x] `samuel install go-guide --allow-unsigned` works for unsigned plugins — flag wired through to `verify.Request.AllowUnsigned`; covered by every install test in `internal/commands/plugins_test.go`.
 - [x] `samuel install codex-translator` (WASM plugin) — wazero loads the module, `health` export returns OK — `internal/plugin/service/service_test.go:TestService_InstallWasm_HealthOK`.

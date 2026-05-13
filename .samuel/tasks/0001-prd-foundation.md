@@ -149,7 +149,7 @@ Bottom-up build order:
 
 ## Open questions
 
-- **Repo strategy**: build in `samuel_v2/` locally, then force-push to `github.com/ar4mirez/samuel` on launch? Or new repo `github.com/ar4mirez/samuel-v2`? Recommend the force-push approach to preserve install URLs.
+- **Repo strategy**: build in `samuel_v2/` locally, then force-push to `github.com/samuelpkg/samuel` on launch? Or new repo `github.com/samuelpkg/samuel-v2`? Recommend the force-push approach to preserve install URLs.
 - **Cosign signing default**: signed-by-default for the official registry, `--allow-unsigned` for dev? Confirm.
 - **JSON envelope schema bump**: `schemaVersion: 4`. Document v3 → v4 changes in code comment per v1's pattern.
 
@@ -157,7 +157,7 @@ Bottom-up build order:
 
 Atomic-sized subtasks for generate-tasks:
 
-1. `go mod init github.com/ar4mirez/samuel`
+1. `go mod init github.com/samuelpkg/samuel`
 2. Create `cmd/samuel/main.go` stub
 3. Port `errors.go` from v1 with namespace renamed
 4. Add `errors_test.go` with full coverage

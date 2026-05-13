@@ -71,7 +71,7 @@ version = "1.0.0"
 kind = "oci"
 
 [oci]
-image = "ghcr.io/ar4mirez/samuel-runner-claude:1.0.0"
+image = "ghcr.io/samuelpkg/samuel-runner-claude:1.0.0"
 `)
 	m, err := Parse(body, "oci.toml")
 	if err != nil {

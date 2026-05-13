@@ -13,7 +13,7 @@ const fixtureIndex = `
 schema_version = 1
 
 [plugin.go-guide]
-repo = "github.com/ar4mirez/samuel-go-guide"
+repo = "github.com/samuelpkg/samuel-go-guide"
 latest = "1.4.2"
 versions = ["1.0.0", "1.4.0", "1.4.2", "2.0.0-rc.1"]
 description = "Go language guardrails and patterns"
@@ -22,7 +22,7 @@ tags = ["go", "golang"]
 kind = "skill"
 
 [plugin.codex-translator]
-repo = "github.com/ar4mirez/samuel-codex-translator"
+repo = "github.com/samuelpkg/samuel-codex-translator"
 latest = "0.2.0"
 versions = ["0.1.0", "0.2.0"]
 description = "Codex tool translator"
@@ -30,14 +30,14 @@ tags = ["translator"]
 kind = "wasm"
 
 [plugin.claude-runner]
-repo = "github.com/ar4mirez/samuel-claude-runner"
+repo = "github.com/samuelpkg/samuel-claude-runner"
 latest = "1.0.0"
 description = "Claude OCI runner"
 tags = ["runner"]
 kind = "oci"
 
 [plugin.react-helper]
-repo = "github.com/ar4mirez/samuel-react-helper"
+repo = "github.com/samuelpkg/samuel-react-helper"
 latest = "0.1.0"
 description = "React component scaffolding"
 tags = ["react", "frontend"]
@@ -168,8 +168,8 @@ func TestSearch_RanksByRelevance(t *testing.T) {
 
 func TestResolveURL_GitHubShorthand(t *testing.T) {
 	c := NewClient(t.TempDir())
-	got := c.resolveURL("github.com/ar4mirez/samuel-registry")
-	if !strings.Contains(got, "raw.githubusercontent.com/ar4mirez/samuel-registry/main/index.toml") {
+	got := c.resolveURL("github.com/samuelpkg/samuel-registry")
+	if !strings.Contains(got, "raw.githubusercontent.com/samuelpkg/samuel-registry/main/index.toml") {
 		t.Errorf("resolveURL got %s", got)
 	}
 }

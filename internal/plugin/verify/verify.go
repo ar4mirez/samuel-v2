@@ -13,7 +13,7 @@
 //	signed_default = true
 //	allow_unsigned_for = ["local", "dev"]
 //	identity_patterns = [
-//	  "https://github.com/ar4mirez/*",
+//	  "https://github.com/samuelpkg/*",
 //	  "https://github.com/anthropics/skills/*",
 //	]
 //	trusted_root = "https://tuf-repo-cdn.sigstore.dev"
@@ -54,13 +54,13 @@ type Policy struct {
 
 // DefaultPolicy is the starting policy used when samuel.toml has no
 // [security] block: signed-by-default for the official registry, with
-// the standard ar4mirez identity allowlist.
+// the standard samuelpkg identity allowlist.
 func DefaultPolicy() Policy {
 	return Policy{
 		SignedDefault:    true,
 		AllowUnsignedFor: []string{"local", "dev"},
 		IdentityPatterns: []string{
-			"https://github.com/ar4mirez/*",
+			"https://github.com/samuelpkg/*",
 			"https://github.com/anthropics/skills/*",
 		},
 		TrustedRoot: "https://tuf-repo-cdn.sigstore.dev",
@@ -83,7 +83,7 @@ type Verifier interface {
 type Request struct {
 	Policy        Policy
 	Plugin        string
-	Source        string // e.g. "github.com/ar4mirez/samuel-go-guide"
+	Source        string // e.g. "github.com/samuelpkg/samuel-go-guide"
 	Registry      string // registry name from samuel.toml
 	BundlePath    string // optional sidecar bundle file (.bundle)
 	AllowUnsigned bool   // CLI override
@@ -94,7 +94,7 @@ type Result struct {
 	Verified bool
 	Identity string
 	Issuer   string
-	Reason   string // free-form note (e.g. "allow-unsigned", "matched ar4mirez")
+	Reason   string // free-form note (e.g. "allow-unsigned", "matched samuelpkg")
 }
 
 // StubVerifier always succeeds and reports identity "stub". Used by
@@ -164,7 +164,7 @@ func RegistryAllowsUnsigned(p Policy, name string) bool {
 
 // globMatch implements the limited "*" glob used in identity_patterns:
 // "*" matches one path segment by default; "**" or trailing "*" match
-// the rest of the string. Sufficient for "https://github.com/ar4mirez/*".
+// the rest of the string. Sufficient for "https://github.com/samuelpkg/*".
 func globMatch(pattern, s string) bool {
 	switch {
 	case pattern == s:

@@ -18,14 +18,14 @@ func TestStub_RejectsUnknownSourceWhenSigningRequired(t *testing.T) {
 	}
 }
 
-func TestStub_AcceptsArmamerizSource(t *testing.T) {
+func TestStub_AcceptsSamuelpkgSource(t *testing.T) {
 	v := StubVerifier{}
 	res, err := v.VerifyBlob(context.Background(), "/any", Request{
 		Policy: DefaultPolicy(),
-		Source: "github.com/ar4mirez/samuel-go-guide",
+		Source: "github.com/samuelpkg/samuel-go-guide",
 	})
 	if err != nil {
-		t.Fatalf("ar4mirez/* should be accepted: %v", err)
+		t.Fatalf("samuelpkg/* should be accepted: %v", err)
 	}
 	if !res.Verified {
 		t.Errorf("expected verified result")
@@ -64,8 +64,8 @@ func TestStub_RegistryAllowlist(t *testing.T) {
 func TestMatchesIdentity(t *testing.T) {
 	pol := DefaultPolicy()
 	cases := map[string]bool{
-		"github.com/ar4mirez/samuel-go-guide":      true,
-		"https://github.com/ar4mirez/samuel-anything": true,
+		"github.com/samuelpkg/samuel-go-guide":      true,
+		"https://github.com/samuelpkg/samuel-anything": true,
 		"github.com/anthropics/skills/mcp-builder":     true,
 		"github.com/random/plugin":                     false,
 	}

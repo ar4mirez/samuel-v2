@@ -16,7 +16,7 @@
 ## Tasks
 
 - [x] 1.0 Go module scaffold [~3,000 tokens - Simple]
-  - [x] 1.1 Run `go mod init github.com/ar4mirez/samuel` at repo root
+  - [x] 1.1 Run `go mod init github.com/samuelpkg/samuel` at repo root
   - [x] 1.2 Create `cmd/samuel/main.go` stub (port v1's 18 lines verbatim)
   - [x] 1.3 Create `internal/` directory tree: `errors/`, `lock/`, `config/`, `encoding/toon/`, `plugin/`, `commands/`, `ui/`, `builtins/`
   - [x] 1.4 Add `LICENSE` (MIT), `.editorconfig`, top-level `README.md` with placeholder content
