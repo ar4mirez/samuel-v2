@@ -28,7 +28,7 @@ func TestBridge_EndToEnd(t *testing.T) {
 	if _, err := srv.Listen(); err != nil {
 		t.Fatal(err)
 	}
-	go srv.Serve()
+	go func() { _ = srv.Serve() }()
 	t.Cleanup(func() { _ = srv.Stop() })
 	time.Sleep(20 * time.Millisecond)
 

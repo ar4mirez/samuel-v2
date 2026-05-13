@@ -58,7 +58,7 @@ func TestServer_HookByName(t *testing.T) {
 	if _, err := srv.Listen(); err != nil {
 		t.Fatal(err)
 	}
-	go srv.Serve()
+	go func() { _ = srv.Serve() }()
 	t.Cleanup(func() { _ = srv.Stop() })
 
 	time.Sleep(20 * time.Millisecond)
@@ -78,7 +78,7 @@ func TestServer_UnimplementedMethod(t *testing.T) {
 	if _, err := srv.Listen(); err != nil {
 		t.Fatal(err)
 	}
-	go srv.Serve()
+	go func() { _ = srv.Serve() }()
 	t.Cleanup(func() { _ = srv.Stop() })
 	time.Sleep(20 * time.Millisecond)
 	c := NewClient(socket)
