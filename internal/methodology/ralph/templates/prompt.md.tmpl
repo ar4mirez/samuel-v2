@@ -1,0 +1,97 @@
+# Ralph Iteration Prompt
+
+You are running iteration {{ .Iteration.Number }} of {{ .Methodology.Name }}.
+Each iteration starts with a fresh context window — that is by design.
+
+## Context Efficiency
+
+Your context window is limited. Minimize reads before you start mutating:
+
+1. **Read `{{ .Paths.TaskContext }}` FIRST** — it contains your current task in TOON
+   form (id, title, files_to_modify, etc.). Do NOT scan `prd.toon` to find your task.
+2. **Read `{{ .Paths.ProgressContext }}`** for learnings from prior iterations.
+3. **Read only the files listed in `files_to_modify`** for your task. Avoid
+   broad codebase exploration unless the task explicitly requires it.
+4. **Read `{{ .Paths.AgentsMD }}`** only if you need project-specific guardrails.
+
+## Your Task
+
+1. **Read task context** (small, pre-computed files):
+   - `{{ .Paths.TaskContext }}` — your assigned task detail
+   - `{{ .Paths.ProgressContext }}` — learnings from prior iterations
+   - `{{ .Paths.AgentsMD }}` only if you need project guardrails
+
+2. **Implement the task**:
+   - Read only files in `files_to_modify` from `task-context.toon`
+   - Follow project guardrails (functions ≤{{ .Guardrails.MaxFunctionLines }} lines,
+     files ≤{{ .Guardrails.MaxFileLines }} lines{{ if .Guardrails.RequireTests }}, tests required{{ end }})
+   - Write tests alongside code
+   - Keep changes atomic — one task per iteration
+
+3. **Run quality checks**:
+{{- range .Config.QualityChecks }}
+   - `{{ . }}`
+{{- end }}
+   - All checks must pass before committing.
+   - If a check fails, fix the issue and retry.
+
+4. **Commit changes** using conventional commits:
+   - Include the task ID in the message.
+   - Example: `feat(auth): task {{ .Iteration.TaskID }} - create user schema`
+
+5. **Mark the task done via the CLI** — DO NOT edit `prd.toon` directly:
+
+   ```bash
+   samuel run done {{ .Iteration.TaskID }} --commit-sha $(git rev-parse HEAD) --iteration {{ .Iteration.Number }}
+   ```
+
+6. **Document learnings**:
+   - Append `[YYYY-MM-DD] [iteration:{{ .Iteration.Number }}] [task:{{ .Iteration.TaskID }}] LEARNING: …`
+     to `{{ .Paths.Progress }}`.
+
+## Rules
+
+- Complete exactly ONE task per iteration.
+- Never skip quality checks.
+- If stuck for too long, mark the task as skipped via:
+  `samuel run skip {{ .Iteration.TaskID }} --reason "blocked: …"`
+- All exported functions need documentation.
+- Write tests for all new code{{ if .Guardrails.RequireTests }} — `require_tests = true` in samuel.toml{{ end }}.
+
+## Error Recovery
+
+If you encounter errors:
+1. Try to fix them within this iteration.
+2. If unfixable, run `samuel run skip {{ .Iteration.TaskID }} --reason "<reason>"` and
+   append a LEARNING entry to `{{ .Paths.Progress }}`.
+3. The next iteration starts with fresh context and can try another angle.
+
+## CLI Mutation Cheat Sheet
+
+| Action                        | Command                                                       |
+|-------------------------------|---------------------------------------------------------------|
+| Mark current task done        | `samuel run done <id> --commit-sha $(git rev-parse HEAD)`     |
+| Skip with a reason            | `samuel run skip <id> --reason "<reason>"`                    |
+| Reset to pending              | `samuel run reset <id>`                                       |
+| Add a new task (auto-id)      | `samuel run enqueue "<title>"`                                |
+| Add a new task (explicit id)  | `samuel run task add <id> "<title>"`                          |
+
+{{ if .Config.PilotMode -}}
+## Pilot Mode
+
+This loop is running in **pilot mode** — tasks were auto-discovered.
+If a task looks unclear or risky, skip it with a reason. The next
+discovery iteration will refine the queue.
+{{- end }}
+
+## Project-Specific Configuration
+
+- AI Tool: {{ .Config.AITool }}
+- Sandbox: {{ .Config.Sandbox }}
+- Max Iterations: {{ .Config.MaxIterations }}
+- PRD File: {{ .Paths.PRD }}
+- Progress File: {{ .Paths.Progress }}
+- Methodology: {{ .Methodology.Name }}
+{{ if .Plugins -}}
+- Installed plugins: {{ join .Plugins ", " }}
+{{- end }}

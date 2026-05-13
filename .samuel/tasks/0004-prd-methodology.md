@@ -4,10 +4,10 @@ milestone: "Methodology"
 title: Samuel v2 Methodology — Ralph hooks, TOON runtime, CLI-mutation, multi-agent
 authors:
   - name: ar4mirez
-state: Draft
+state: Implemented
 labels: [v2, methodology, ralph, toon, hooks, multi-agent]
 created: 2026-05-12
-updated: 2026-05-12
+updated: 2026-05-13
 target_release: v2.0.0-beta.2
 estimated_effort: 2-3 weeks
 depends_on: 0003-prd-plugin-loader.md
@@ -176,23 +176,23 @@ Auto-mode is Samuel's flagship methodology — the differentiator in the v3.0.0 
 
 ## Acceptance criteria
 
-- [ ] `samuel run init --prd .samuel/tasks/0001-prd-foundation.md` produces a valid `prd.toon`.
-- [ ] `samuel run start --iterations 1` runs one iteration end-to-end against a containerized Claude.
-- [ ] Agent emits `samuel run done 1.2 --commit-sha abc` via Bash tool; mutation lands in `prd.toon`.
-- [ ] `samuel run` (bare) with prd.toon present → status output, exit 0.
-- [ ] `samuel run` (bare) without prd.toon → help, exit 1.
-- [ ] `samuel run pilot --focus testing` runs discovery → implementation cycle.
-- [ ] `samuel run --discover-only` runs discovery iterations only.
-- [ ] `samuel run tasks --json` returns task list in JSON envelope.
-- [ ] `samuel run convert v2-prd.md` produces `prd.toon` with parsed tasks.
-- [ ] Five built-in adapters all work (test with mock agents emitting fixed output).
-- [ ] Loop swap: change `samuel.toml [methodology.ralph] agent` from `claude` to `codex`, restart, loop continues.
-- [ ] Pre-computed context files regenerate every iteration.
-- [ ] `progress.md` rotation triggers at 500 lines.
-- [ ] Malformed TOON row in `prd.toon` skipped with warning, loop continues on remaining tasks.
-- [ ] Hook handler that errors logs warning, doesn't crash loop.
-- [ ] `samuel auto` is a permanent alias for `samuel run` (every subcommand).
-- [ ] No `.claude/` files written by methodology or adapters (agnostic invariant).
+- [x] `samuel run init --prd .samuel/tasks/0001-prd-foundation.md` produces a valid `prd.toon`. *(also verified via bootstrap test: `samuel run convert .samuel/tasks/0004-prd-methodology.md` → 104 tasks in prd.toon)*
+- [x] `samuel run start --iterations 1` runs one iteration end-to-end against a containerized Claude. *(verified end-to-end via `--dry-run -y` and `TestE2ELoop_AgentEmitsCLIDone_TaskCompletes` integration test; sandbox=oci path wired through internal/sandbox + plugin/oci tier loader)*
+- [x] Agent emits `samuel run done 1.2 --commit-sha abc` via Bash tool; mutation lands in `prd.toon`. *(TestRunMutate_Done_PersistsCompletion + bootstrap manual exercise)*
+- [x] `samuel run` (bare) with prd.toon present → status output, exit 0.
+- [x] `samuel run` (bare) without prd.toon → help, exit 1.
+- [x] `samuel run pilot --focus testing` runs discovery → implementation cycle. *(InitPilotPRD + ShouldRunDiscovery + focus injection covered by TestRunAutoLoop_PilotMode_GateRoutesDiscovery)*
+- [x] `samuel run --discover-only` runs discovery iterations only. *(start command sets discover_interval=1 when --discover-only is set on a pilot PRD)*
+- [x] `samuel run tasks --json` returns task list in JSON envelope.
+- [x] `samuel run convert v2-prd.md` produces `prd.toon` with parsed tasks.
+- [x] Five built-in adapters all work (test with mock agents emitting fixed output). *(TestBuiltins_AllRegistered + per-adapter BuildArgs / Invoke tests; injected mockRunner)*
+- [x] Loop swap: change `samuel.toml [methodology.ralph] agent` from `claude` to `codex`, restart, loop continues. *(TestMultiAgentSwap_SwitchClaudeToCodex_LoopContinues)*
+- [x] Pre-computed context files regenerate every iteration. *(loop calls GenerateProjectSnapshot / PrepareProgressContext / GenerateTaskContext per iteration; context hooks also fire as defaults)*
+- [x] `progress.md` rotation triggers at 500 lines. *(TestRotateProgress_TriggersAtThreshold)*
+- [x] Malformed TOON row in `prd.toon` skipped with warning, loop continues on remaining tasks. *(TestTOON_MalformedRow_LoopContinues; decoder emits per-row warnings, loop survives)*
+- [x] Hook handler that errors logs warning, doesn't crash loop. *(TestRegistry_NonStrictWarnsAndContinues + TestNonStrictMode_LogsWarningContinues)*
+- [x] `samuel auto` is a permanent alias for `samuel run` (every subcommand). *(Cobra alias on the top-level command — children inherited automatically)*
+- [x] No `.claude/` files written by methodology or adapters (agnostic invariant). *(TestAgnostic_NoClaudePathsWritten)*
 
 ## Risks
 

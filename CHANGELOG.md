@@ -7,6 +7,80 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.0-beta.2] — Methodology (Milestone 4)
+
+PRD: [0004-prd-methodology.md](.samuel/tasks/0004-prd-methodology.md)
+
+### Added
+
+- `internal/methodology/hooks`: lifecycle-hook framework with the 13
+  hook points from RFD 0004 (`before:loop`, `after:loop`,
+  `before:iteration`, `after:iteration`, `iteration.gate`,
+  `context.{snapshot,progress,task,extra}`,
+  `before:agent.invoke`, `agent.invoke`, `after:agent.invoke`,
+  `quality.check`). `Registry` resolves handler order from source
+  (user override → built-in default → plugin) and honours per-hook
+  `strict`, `timeout`, and `OrderOverride` from `samuel.toml`.
+  Plugin handlers go through a `CapabilityChecker` before invocation.
+- `internal/methodology/ralph/prd`: v2 port of `AutoPRD`,
+  `AutoProject`, `AutoConfig`, `PilotConfig`, `AutoTask`,
+  `AutoProgress`. Schema version `2.0`. Encodes to and decodes from
+  TOON via tabular `tasks[N]{...}:` rows; AI-emitted numeric IDs are
+  coerced to strings on load.
+- `internal/methodology/ralph/prd.PRD I/O`: `Load`, `Save`,
+  atomic write-tmp-then-rename. Validate catches duplicate IDs,
+  missing titles, invalid statuses, dependency cycles.
+- `internal/methodology/ralph/context`: pre-computed context
+  generators ported from v1 — `GenerateProjectSnapshot` (TOON),
+  `GenerateProgressContext` (Markdown), `GenerateTaskContext`
+  (TOON, impl vs discovery shape), `RotateProgressIfNeeded`
+  (500-line default threshold).
+- `internal/methodology/ralph`: `RunAutoLoop` driver with per-iteration
+  prd.toon reload, hook firing at the 13 lifecycle points,
+  `MaxConsecFails` abort, `PauseSecs` pacing, `--profile` timings,
+  `--dry-run` short-circuit.
+- `internal/methodology/ralph.RegisterDefaults`: built-in handlers for
+  `context.{snapshot,progress,task}`, `iteration.gate`,
+  `quality.check`, `before:loop`.
+- `internal/methodology/ralph/pilot`: `NewPilotConfig`,
+  `ShouldRunDiscovery` (empty queue / interval / preemptive trigger),
+  `InitPilotPRD` with focus-area injection.
+- `internal/agents`: `AgentAdapter` interface +
+  five built-in adapters (`claude`, `codex`, `copilot`, `gemini`,
+  `kiro`). Each declares prompt-mode (content-arg, file-arg, stdin),
+  env allowlist, default image, default args.
+- `internal/sandbox`: `Runner` implements `agents.CommandRunner` with
+  `none` (host exec), `oci` (container via the Milestone 3 OCI tier
+  loader), and `dry-run` modes. OCI mount layout: `/workspace` rw,
+  `/skills` ro, `/.samuel/run` ro (CLI-mutation invariant),
+  `/plugin/config` ro, `/samuel-bridge`. Env allowlist filter and
+  user mapping (`--user UID:GID`) preserved.
+- `internal/methodology/ralph/templates`: embedded prompt templates
+  (`prompt.md.tmpl` + `discovery-prompt.md.tmpl`) using `text/template`
+  with helpers (`join`, `indent`, `relpath`, `hasPlugin`,
+  `focusDescription`). Per-project override at
+  `.samuel/templates/ralph/*.md.tmpl` shadows the embedded default.
+  Prompts now instruct the agent to use `samuel run done|skip|reset|enqueue`
+  CLI subcommands — they never edit `prd.toon` directly.
+- `internal/commands/run.go` + `internal/commands/run_mutations.go`:
+  `samuel run [methodology]` command surface — positional methodology
+  argument with alias map (`rw` → `ralph`), smart bare invocation,
+  `init`, `start`, `status`, `pilot`, `convert`, `tasks`, `done`,
+  `skip`, `reset`, `enqueue`, `task add`. All mutations acquire the
+  per-project file lock and persist atomically. `samuel auto` is a
+  permanent alias (v1 compat).
+- Tests: hook composition with two plugins + default chain, strict-mode
+  abort, non-strict warning + continue, capability-deny path, timeout,
+  agent-swap from claude to codex, per-project template override,
+  TOON per-row malformation recovery, agnostic invariant (no
+  `.claude/` paths written).
+
+### Changed
+
+- Runtime files now live at `.samuel/run/` (TOON for structured,
+  Markdown for journals): `prd.toon`, `task-context.toon`,
+  `project-snapshot.toon`, `progress.md`, `progress-context.md`.
+
 ## [v2.0.0-beta.1] — Plugin Loader (Milestone 3)
 
 PRD: [0003-prd-plugin-loader.md](.samuel/tasks/0003-prd-plugin-loader.md)

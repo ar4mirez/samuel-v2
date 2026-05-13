@@ -1,0 +1,85 @@
+# Ralph Discovery Prompt
+
+You are running iteration {{ .Iteration.Number }} of {{ .Methodology.Name }}
+in **DISCOVERY mode**. Your job is to analyze the project and generate
+high-value tasks. Do NOT write any code or make any commits this iteration.
+
+## Context Efficiency
+
+1. **Read `{{ .Paths.ProjectSnapshot }}` FIRST** — pre-computed file inventory,
+   test gaps, large files, TODO/FIXME counts, recent git log. Do NOT scan the
+   directory tree manually.
+2. **Read `{{ .Paths.TaskContext }}`** — existing task summary + files already
+   covered by pending work. Do not duplicate.
+3. **Read `{{ .Paths.ProgressContext }}`** — learnings + explored areas from
+   prior iterations.
+4. **Use grep over file reads.** Read at most 10 source files this iteration.
+5. **Skip files in "Areas Already Analyzed"** unless git log shows recent changes.
+
+## Steps
+
+1. **Read pre-computed context** (all three are small):
+   - `{{ .Paths.ProjectSnapshot }}` (TOON)
+   - `{{ .Paths.TaskContext }}` (TOON)
+   - `{{ .Paths.ProgressContext }}` (markdown)
+
+2. **Analyze without re-reading everything**:
+   - Test gaps from `project-snapshot.toon` → propose test tasks.
+   - TODO/FIXME counts → read only the highest-count files.
+   - Large files → flag refactor candidates exceeding guardrail limits
+     (functions >{{ .Guardrails.MaxFunctionLines }} lines,
+     files >{{ .Guardrails.MaxFileLines }} lines).
+   - Recent git log → propose follow-ups.
+   - Run `grep` for security patterns, missing validation, etc.
+
+3. **Generate new tasks via CLI** — DO NOT edit `prd.toon` directly:
+
+   ```bash
+   samuel run enqueue "Add input validation to user handler"
+   samuel run task add 5.0 "Document auth flow"   # explicit-id for CI parity
+   ```
+
+   - Each task atomic (≤5 files).
+   - Clear, actionable titles.
+   - `--source pilot-discovery` is the default for `enqueue`.
+   - Limit: {{ if .Config.PilotConfig }}{{ .Config.PilotConfig.MaxDiscoveryTasks }}{{ else }}10{{ end }} new tasks per iteration.
+
+4. **Document findings**:
+   - Append `[YYYY-MM-DD] [discovery] FOUND: …` to `{{ .Paths.Progress }}`.
+   - For each file you read: `[YYYY-MM-DD] [discovery] EXPLORED: <path>`.
+
+## Priority Order
+
+1. Security issues (critical).
+2. Failing or missing tests (high).
+3. Code-quality violations (medium-high).
+4. Documentation gaps (medium).
+5. Performance improvements (medium-low).
+6. Refactoring opportunities (low).
+
+{{ if .Config.PilotConfig -}}
+{{ if .Config.PilotConfig.Focus -}}
+## Focus Area: {{ .Config.PilotConfig.Focus }}
+
+Prioritize tasks related to this focus area:
+{{ focusDescription .Config.PilotConfig.Focus }}
+{{- end -}}
+{{- end }}
+
+## Rules
+
+- Atomic tasks only (≤5 files).
+- No code changes; no commits.
+- No duplicate tasks — check `{{ .Paths.TaskContext }}` first.
+- Specific, actionable descriptions.
+- Read at most 10 source files — use grep + the snapshot for the rest.
+
+## Quality Checks Reference
+
+These are the project's quality commands (used in implementation mode):
+
+```bash
+{{- range .Config.QualityChecks }}
+{{ . }}
+{{- end }}
+```
