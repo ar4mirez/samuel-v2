@@ -95,9 +95,9 @@
   - [x] 10.7 Add `.github/workflows/agnostic-check.yml` per RFD 0002 (grep for CLAUDE.md / .claude/ in internal/)
   - [x] 10.8 Port `install.sh` from v1; update GITHUB_REPO and any hardcoded URLs
 
-- [ ] 11.0 Tag and verify alpha.1 [~1,500 tokens - Simple]
+- [x] 11.0 Tag and verify alpha.1 [~1,500 tokens - Simple]
   - [x] 11.1 Commit all milestone-1 work
-  - [ ] 11.2 Tag `v2.0.0-alpha.1`
-  - [ ] 11.3 Push tag; goreleaser publishes signed artifacts
-  - [ ] 11.4 Smoke test: download artifact on clean macOS container, `samuel version` works
-  - [ ] 11.5 Smoke test: same on clean Linux container
+  - [x] 11.2 Tag `v2.0.0-alpha.1`
+  - [x] 11.3 Push tag; goreleaser publishes signed artifacts
+  - [x] 11.4 Smoke test: download artifact on clean macOS container, `samuel version` works
+  - [x] 11.5 Smoke test: same on clean Linux container
