@@ -197,38 +197,58 @@ func NewCache(dir, samuelVersion string, v Verifier) *Cache {
 
 // VerifyBlob checks the cache, falls through to the inner verifier on
 // miss, and writes the result back.
+//
+// The cache key includes the AllowUnsigned flag so that toggling
+// --allow-unsigned on the CLI re-runs the policy check instead of
+// returning a stale prior decision. Without this, the first `install
+// --allow-unsigned` would make the flag effectively sticky for that
+// file's digest on every subsequent install/update.
 func (c *Cache) VerifyBlob(ctx context.Context, path string, req Request) (Result, error) {
 	digest, err := blobDigest(path)
 	if err != nil {
 		return c.wrapped.VerifyBlob(ctx, path, req)
 	}
-	if r, ok := c.read(digest); ok {
+	key := cacheKey(digest, req.AllowUnsigned)
+	if r, ok := c.read(key); ok {
 		return r, nil
 	}
 	r, err := c.wrapped.VerifyBlob(ctx, path, req)
 	if err == nil {
-		_ = c.write(digest, r)
+		_ = c.write(key, r)
 	}
 	return r, err
 }
 
-// VerifyImage is the OCI counterpart; cache key is the digest verbatim.
+// VerifyImage is the OCI counterpart; cache key is the digest plus the
+// AllowUnsigned flag, for the same reason VerifyBlob keys on both.
 func (c *Cache) VerifyImage(ctx context.Context, digest string, req Request) (Result, error) {
-	if r, ok := c.read(digest); ok {
+	key := cacheKey(digest, req.AllowUnsigned)
+	if r, ok := c.read(key); ok {
 		return r, nil
 	}
 	r, err := c.wrapped.VerifyImage(ctx, digest, req)
 	if err == nil {
-		_ = c.write(digest, r)
+		_ = c.write(key, r)
 	}
 	return r, err
 }
 
-func (c *Cache) read(digest string) (Result, bool) {
+// cacheKey combines a content digest with the AllowUnsigned flag so the
+// cache file path encodes both. Re-verifying with the flag flipped
+// always misses the cache, which is what makes the policy responsive
+// to CLI input on every invocation.
+func cacheKey(digest string, allowUnsigned bool) string {
+	if allowUnsigned {
+		return digest + "+unsigned"
+	}
+	return digest
+}
+
+func (c *Cache) read(key string) (Result, bool) {
 	if c.dir == "" {
 		return Result{}, false
 	}
-	body, err := os.ReadFile(c.path(digest))
+	body, err := os.ReadFile(c.path(key))
 	if err != nil {
 		return Result{}, false
 	}
@@ -242,11 +262,11 @@ func (c *Cache) read(digest string) (Result, bool) {
 	return out.Result, true
 }
 
-func (c *Cache) write(digest string, r Result) error {
+func (c *Cache) write(key string, r Result) error {
 	if c.dir == "" {
 		return nil
 	}
-	path := c.path(digest)
+	path := c.path(key)
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
@@ -265,10 +285,17 @@ func (c *Cache) write(digest string, r Result) error {
 	return os.Rename(tmp, path)
 }
 
-func (c *Cache) path(digest string) string {
+func (c *Cache) path(key string) string {
+	// Truncate the digest portion for filesystem-friendly names but
+	// keep the AllowUnsigned suffix intact so two policies for the
+	// same blob land in different files.
+	digest, suffix, found := strings.Cut(key, "+")
+	if len(digest) > 16 {
+		digest = digest[:16]
+	}
 	short := digest
-	if len(short) > 16 {
-		short = short[:16]
+	if found {
+		short = digest + "+" + suffix
 	}
 	return filepath.Join(c.dir, short+".json")
 }

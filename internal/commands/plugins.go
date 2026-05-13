@@ -54,6 +54,10 @@ func init() {
 	lsCmd.Flags().String("type", "", "Filter by tier: skill|wasm|oci")
 
 	updateCmd.Flags().Bool("all", false, "Update every plugin to its latest compatible version")
+	updateCmd.Flags().Bool("allow-unsigned", false, "Skip signature verification (matches install)")
+	updateCmd.Flags().Bool("allow-prerelease", false, "Allow prerelease versions during resolution (matches install)")
+	updateCmd.Flags().Bool("non-interactive", false, "Fail-closed on prompts (CI use; matches install)")
+	updateCmd.Flags().Bool("dry-run", false, "Resolve + verify but do not write (matches install)")
 }
 
 // buildService wires the install path against the project's config +
@@ -514,7 +518,17 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 		return nil
 	}
-	// With plugin args or --all → reinstall.
+	// With plugin args or --all → reinstall. The signature/policy flags
+	// mirror `samuel install` so a user can re-evaluate trust at update
+	// time. Without this, the only way to flip --allow-unsigned during
+	// an update was to uninstall + reinstall (and even then the cache
+	// would have made the prior decision sticky — see
+	// verify.Cache.VerifyBlob).
+	allowUnsigned, _ := cmd.Flags().GetBool("allow-unsigned")
+	allowPrerelease, _ := cmd.Flags().GetBool("allow-prerelease")
+	nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
+	dryRun, _ := cmd.Flags().GetBool("dry-run")
+
 	names := args
 	if all {
 		installed, err := svc.ListInstalled()
@@ -531,14 +545,27 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		ctx = context.Background()
 	}
 	for _, n := range names {
-		res, err := svc.Install(ctx, service.InstallOptions{Name: n, Yes: true, Force: true})
+		res, err := svc.Install(ctx, service.InstallOptions{
+			Name:            n,
+			Yes:             true,
+			Force:           true,
+			AllowUnsigned:   allowUnsigned,
+			AllowPrerelease: allowPrerelease,
+			NonInteractive:  nonInteractive,
+			DryRun:          dryRun,
+		})
 		if err != nil {
 			ui.ErrorItem(1, "%s: %v", n, err)
 			results = append(results, map[string]any{"name": n, "error": err.Error()})
 			continue
 		}
-		ui.SuccessItem(1, "%s -> %s", res.Name, res.Version)
-		results = append(results, map[string]any{"name": res.Name, "version": res.Version})
+		ui.SuccessItem(1, "%s -> %s (%s)", res.Name, res.Version, verify.Describe(res.Verified))
+		results = append(results, map[string]any{
+			"name":     res.Name,
+			"version":  res.Version,
+			"verified": res.Verified.Verified,
+			"reason":   res.Verified.Reason,
+		})
 	}
 	if JSONMode(cmd) {
 		ui.PrintJSON(commandPath(cmd), map[string]any{"updated": results})

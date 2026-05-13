@@ -100,6 +100,49 @@ func TestCache_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestCache_TogglingAllowUnsignedReVerifies(t *testing.T) {
+	// Regression: prior to issue #2's fix, the cache keyed only on the
+	// blob digest. First call with AllowUnsigned=true cached
+	// Reason="--allow-unsigned"; second call with AllowUnsigned=false
+	// returned the same cached entry, making the flag effectively
+	// sticky and the policy invisible from the CLI.
+	dir := t.TempDir()
+	var calls []bool
+	stubInner := stubVerifier{onBlob: func(_ string, req Request) (Result, error) {
+		calls = append(calls, req.AllowUnsigned)
+		if req.AllowUnsigned {
+			return Result{Verified: true, Reason: "--allow-unsigned"}, nil
+		}
+		return Result{Verified: true, Reason: "stub: identity matched"}, nil
+	}}
+	cache := NewCache(dir, "v2.0.0", stubInner)
+	path := filepath.Join(dir, "art.tar")
+	if err := os.WriteFile(path, []byte("hello"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r1, err := cache.VerifyBlob(context.Background(), path, Request{Policy: DefaultPolicy(), AllowUnsigned: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r2, err := cache.VerifyBlob(context.Background(), path, Request{Policy: DefaultPolicy(), AllowUnsigned: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r1.Reason == r2.Reason {
+		t.Errorf("AllowUnsigned toggle should change Reason; both were %q", r1.Reason)
+	}
+	if len(calls) != 2 {
+		t.Errorf("inner verifier should be called twice (once per AllowUnsigned value), got %d", len(calls))
+	}
+	// Same call again with AllowUnsigned=true should hit the cache.
+	if _, err := cache.VerifyBlob(context.Background(), path, Request{Policy: DefaultPolicy(), AllowUnsigned: true}); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 2 {
+		t.Errorf("second AllowUnsigned=true call should hit cache, got %d total calls", len(calls))
+	}
+}
+
 func TestCache_InvalidatesOnVersionBump(t *testing.T) {
 	dir := t.TempDir()
 	calls := 0

@@ -7,6 +7,31 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.0-rc.7] — Verify cache key + update signature flags
+
+Closes [Issue #2](https://github.com/samuelpkg/samuel/issues/2).
+
+### Fixed
+
+- **Verifier cache now keys on `(digest, AllowUnsigned)`, not digest
+  alone.** Previously, the first `samuel install <name> --allow-unsigned`
+  cached `Reason: "--allow-unsigned"` against the plugin file's digest,
+  and every subsequent install/update of the same plugin — *with or
+  without the flag* — replayed that cached decision. The flag was
+  effectively sticky and the underlying signature policy was invisible
+  from the CLI. The cache now stores `(digest, AllowUnsigned)` pairs
+  separately, so toggling the flag re-runs the policy check.
+- **`samuel update <name>` now accepts the same signature/policy flags
+  as `samuel install`**: `--allow-unsigned`, `--allow-prerelease`,
+  `--non-interactive`, `--dry-run`. Previously these were rejected as
+  unknown flags, leaving update users no way to control trust at
+  update time.
+- **`samuel update <name>` now reports the verification reason** in
+  its success line — `actix-web -> 1.0.0 (verified (github.com/...))`
+  — matching the install command's signature line. Previously the
+  output read only `actix-web -> 1.0.0` and gave no signal about
+  whether the install path's signature policy actually ran.
+
 ## [v2.0.0-rc.6] — Plugin install fetcher: v-prefix tag fallback
 
 ### Fixed
