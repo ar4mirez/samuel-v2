@@ -1,6 +1,9 @@
 package plugin
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestStubs_SatisfyInterface(t *testing.T) {
 	// Compile-time guarantees in kinds.go cover this, but a runtime
@@ -19,7 +22,7 @@ func TestStubs_SatisfyInterface(t *testing.T) {
 		if p.Manifest().Name != wantNames[i] {
 			t.Errorf("stub %d manifest name mismatch", i)
 		}
-		hs := p.Check(nil)
+		hs := p.Check(context.Background())
 		if hs.OK {
 			t.Errorf("stub %d Check should report not-OK while lifecycle is unimplemented", i)
 		}

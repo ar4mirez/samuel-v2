@@ -88,14 +88,6 @@ func (p *parser) peek() (sourceLine, bool) {
 	return sourceLine{}, false
 }
 
-func (p *parser) consume() (sourceLine, bool) {
-	line, ok := p.peek()
-	if ok {
-		p.i++
-	}
-	return line, ok
-}
-
 // parseObject reads keyed entries at exactly `depth` indentation,
 // stopping when the next non-blank line is dedented.
 func (p *parser) parseObject(depth int) (*Object, error) {
