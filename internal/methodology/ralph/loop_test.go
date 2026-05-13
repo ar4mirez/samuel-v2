@@ -14,7 +14,6 @@ import (
 
 type fakeRunner struct {
 	called int
-	want   string
 }
 
 func (f *fakeRunner) Run(_ context.Context, _ string, _ []string, opts agents.CommandOptions) (agents.Result, error) {

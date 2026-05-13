@@ -34,7 +34,7 @@ func setupRunProject(t *testing.T) string {
 func TestRunMutate_Done_PersistsCompletion(t *testing.T) {
 	dir := setupRunProject(t)
 	cmd := runDoneCmd
-	cmd.ParseFlags([]string{"--commit-sha", "abc123def", "--iteration", "5"})
+	_ = cmd.ParseFlags([]string{"--commit-sha", "abc123def", "--iteration", "5"})
 	if err := runRunTaskDone(cmd, []string{"1"}); err != nil {
 		t.Fatalf("runRunTaskDone: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestRunMutate_Skip_WithReason(t *testing.T) {
 	cmd := runSkipCmd
 	cmd.ResetFlags()
 	cmd.Flags().String("reason", "", "")
-	cmd.ParseFlags([]string{"--reason", "covered by 2"})
+	_ = cmd.ParseFlags([]string{"--reason", "covered by 2"})
 	if err := runRunTaskSkip(cmd, []string{"1"}); err != nil {
 		t.Fatalf("skip: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestRunMutate_Enqueue_AutoAssignsID(t *testing.T) {
 	cmd.Flags().String("priority", prd.PriorityMedium, "")
 	cmd.Flags().String("complexity", prd.ComplexityMedium, "")
 	cmd.Flags().String("source", prd.SourceManual, "")
-	cmd.ParseFlags(nil)
+	_ = cmd.ParseFlags(nil)
 	if err := runRunTaskEnqueue(cmd, []string{"Hello"}); err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
