@@ -117,6 +117,53 @@ func TestE2ELoop_AgentEmitsCLIDone_TaskCompletes(t *testing.T) {
 	}
 }
 
+// setupEmptyRunProject is a sibling of setupRunProject that initializes
+// the auto-loop layout but enqueues zero tasks. Used to exercise the
+// empty-queue exit path.
+func setupEmptyRunProject(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	prev, _ := os.Getwd()
+	t.Cleanup(func() { _ = os.Chdir(prev) })
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.MkdirAll(filepath.Join(dir, prd.RunDir), 0o755)
+	p := prd.NewAutoPRD("demo-empty", "")
+	if err := p.Save(prd.PRDPath(dir)); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestRunStart_EmptyQueue_PrintsHint(t *testing.T) {
+	// Regression: rc.6 exited silently when the loop had no pending
+	// tasks. Now the CLI catches this before calling RunAutoLoop and
+	// prints actionable guidance (issue #5).
+	_ = setupEmptyRunProject(t)
+	out, _ := captureOutput(t)
+
+	cmd := runStartCmd
+	cmd.ResetFlags()
+	cmd.Flags().Int("iterations", 0, "")
+	cmd.Flags().BoolP("yes", "y", true, "")
+	cmd.Flags().Bool("dry-run", true, "")
+	cmd.Flags().Bool("profile", false, "")
+	cmd.Flags().Bool("discover-only", false, "")
+	_ = cmd.ParseFlags([]string{"--yes", "--dry-run"})
+
+	if err := runRunStart(cmd, nil); err != nil {
+		t.Fatalf("runRunStart on empty queue should not error: %v", err)
+	}
+	text := out.String()
+	if !strings.Contains(text, "No pending tasks") {
+		t.Errorf("expected 'No pending tasks' hint; got %q", text)
+	}
+	if !strings.Contains(text, "samuel run enqueue") {
+		t.Errorf("expected enqueue hint; got %q", text)
+	}
+}
+
 func TestAgnostic_NoClaudePathsWritten(t *testing.T) {
 	dir := setupRunProject(t)
 	registry := hooks.NewRegistry()

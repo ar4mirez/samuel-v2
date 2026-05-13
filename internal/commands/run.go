@@ -282,6 +282,24 @@ func runRunStart(cmd *cobra.Command, _ []string) error {
 		}
 		p.Config.PilotConfig.DiscoverInterval = 1
 	}
+
+	// Empty queue + non-pilot mode means the loop has nothing to do and
+	// will exit cleanly with no output (loop.go: queue-empty break path).
+	// Catch it here so the user gets actionable feedback instead of a
+	// silent exit 0 that's indistinguishable from a crash in CI logs.
+	if p.CountPendingTasks() == 0 && !p.Config.PilotMode {
+		if JSONMode(cmd) {
+			ui.PrintJSON(commandPath(cmd), map[string]any{
+				"iterations_run": 0,
+				"pending_tasks":  0,
+				"message":        "no pending tasks; nothing to do",
+			})
+			return nil
+		}
+		ui.Info("No pending tasks. Add one with `samuel run enqueue <title>`, or initialize from a PRD with `samuel run init --prd <path>`.")
+		return nil
+	}
+
 	yes, _ := cmd.Flags().GetBool("yes")
 	if !yes && !dryRun {
 		fmt.Fprintf(os.Stdout, "Start autonomous loop on %s using %s for %d iterations? [y/N] ", cwd, p.Config.AITool, p.Config.MaxIterations)

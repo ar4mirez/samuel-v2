@@ -7,6 +7,25 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.0-rc.8] — run start: actionable empty-queue exit
+
+Closes [Issue #5](https://github.com/samuelpkg/samuel/issues/5).
+
+### Fixed
+
+- **`samuel run start` no longer exits silently when the loop has no
+  pending tasks.** The ralph loop's empty-queue branch
+  ([loop.go:135-139](internal/methodology/ralph/loop.go#L135-L139))
+  cleanly `break`s, but it returned that signal nowhere — so the CLI
+  exited 0 with zero output, indistinguishable from a successful run
+  or a crash in CI logs. `runRunStart` now detects empty-queue +
+  non-pilot before invoking the loop and emits:
+  - text mode: `→ No pending tasks. Add one with samuel run enqueue <title>, or initialize from a PRD with samuel run init --prd <path>.`
+  - JSON mode: standard envelope with `iterations_run: 0`, `pending_tasks: 0`, `message: "no pending tasks; nothing to do"`.
+
+  Pilot mode is exempt — its whole job is to discover tasks from an
+  empty queue.
+
 ## [v2.0.0-rc.7] — Verify cache key + update signature flags
 
 Closes [Issue #2](https://github.com/samuelpkg/samuel/issues/2).
