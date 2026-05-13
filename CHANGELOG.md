@@ -7,6 +7,50 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.0-rc.12] — PRD parser accepts inline task headings
+
+Closes [Issue #4](https://github.com/samuelpkg/samuel/issues/4).
+
+### Added
+
+- **`ParseTasksFromPRDBody`** extracts tasks from inline H3 headings
+  under a `## Tasks` (or `## Implementation`, `## Implementation Plan`,
+  `## Steps`, `## Work Items`) section in the PRD body:
+
+  ```markdown
+  ## Tasks
+
+  ### 1.1 Render the dry-run prompt
+
+  The loop should produce a context bundle ...
+  **Acceptance**: prompt rendered, exit 0.
+
+  ### 1.2 Honor the iteration cap
+
+  A single iteration should suffice in dry-run.
+  ```
+
+  Each `### N.M Title` produces one AutoTask. The section body between
+  headings becomes the task description. ParentID is inferred from
+  the dotted ID (`1.1` → parent `1`; `1.2.3` → parent `1.2`). The
+  H2 boundary closes the tasks-section scope so non-task subheadings
+  don't leak in.
+
+- **`samuel run init --prd`** and **`samuel run convert`** now warn
+  when conversion yields zero tasks, listing both accepted shapes
+  (inline headings + companion checklist) so users know what to
+  change. Pre-rc.12 these commands silently produced an empty
+  loop — the failure mode that the rc.5 manual test surfaced.
+
+### Changed
+
+- **`ConvertMarkdownToPRD` task-source resolution is now ordered**:
+  v1-style companion checklist (`tasks-<base>.md`) wins when present
+  and non-empty; otherwise fall back to inline task headings in the
+  PRD body. An empty companion file is no longer fatal — it falls
+  through to the inline parser. Preserves backward compatibility for
+  generate-tasks fixtures.
+
 ## [v2.0.0-rc.11] — Doctor now verifies installed plugins
 
 Closes [Issue #3](https://github.com/samuelpkg/samuel/issues/3).

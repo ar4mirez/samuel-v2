@@ -21,10 +21,38 @@ var taskLineRegex = regexp.MustCompile(
 // prdTitleRegex grabs the first H1 from a PRD markdown file.
 var prdTitleRegex = regexp.MustCompile(`^#\s+(.+)$`)
 
+// taskHeadingRegex matches H3 headings shaped like "### N.M Title" or
+// "### N Title" — the convention common to PRDs that embed tasks
+// directly under a "## Tasks" section rather than in a companion
+// checklist file. Groups: taskID, title.
+var taskHeadingRegex = regexp.MustCompile(`^###\s+(\d+(?:\.\d+)*)\s+(.+?)\s*$`)
+
+// taskSectionRegex matches the H2 heading that introduces a tasks
+// section. Case-insensitive on the keyword; "## Tasks", "## Implementation",
+// "## Steps", and "## Work Items" all qualify. Anything else under H2
+// closes the tasks-section scope, so non-task subheadings don't get
+// picked up as tasks.
+var taskSectionRegex = regexp.MustCompile(`(?i)^##\s+(tasks|implementation(\s+plan)?|steps|work\s+items)\s*$`)
+
 // ConvertMarkdownToPRD turns a Samuel PRD markdown file (+ optional
 // tasks file) into a fully-formed AutoPRD ready to be saved as
-// prd.toon. Matches v1's converter so generate-tasks fixtures keep
-// working.
+// prd.toon.
+//
+// Task source resolution, in order:
+//
+//  1. If tasksPath is non-empty and the file contains v1-style
+//     checklist entries (`- [ ] 1.1 Title`), those win — preserves
+//     backward compatibility with generate-tasks fixtures.
+//  2. Otherwise, scan the PRD body for `### N.M Title` headings
+//     under any `## Tasks` (or `## Implementation`, `## Steps`,
+//     `## Work Items`) section. This is the convention most PRDs
+//     written in 2026+ actually use, and the format that the
+//     `samuel run init --prd` examples in the docs show.
+//
+// Returns an AutoPRD with `len(p.Tasks) == 0` when neither path
+// finds tasks — the caller (CLI) is responsible for surfacing
+// that as a user-visible warning rather than letting the loop
+// silently start with no work to do.
 func ConvertMarkdownToPRD(prdPath, tasksPath string) (*AutoPRD, error) {
 	body, err := os.ReadFile(prdPath)
 	if err != nil {
@@ -36,15 +64,21 @@ func ConvertMarkdownToPRD(prdPath, tasksPath string) (*AutoPRD, error) {
 	p.Project.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 
 	if tasksPath != "" {
-		tbody, err := os.ReadFile(tasksPath)
-		if err != nil {
-			return nil, fmt.Errorf("read tasks file: %w", err)
+		tbody, terr := os.ReadFile(tasksPath)
+		if terr != nil {
+			return nil, fmt.Errorf("read tasks file: %w", terr)
 		}
-		tasks, err := ParseTaskMarkdown(string(tbody))
-		if err != nil {
-			return nil, fmt.Errorf("parse tasks: %w", err)
+		// ParseTaskMarkdown returns an error when the file contains
+		// no checklist lines. Treat that as "fall through to the
+		// inline-heading parser", not as a fatal error — the user
+		// might have written tasks inline and named a stub
+		// companion file by accident.
+		if tasks, perr := ParseTaskMarkdown(string(tbody)); perr == nil {
+			p.Tasks = tasks
 		}
-		p.Tasks = tasks
+	}
+	if len(p.Tasks) == 0 {
+		p.Tasks = ParseTasksFromPRDBody(string(body))
 	}
 	p.RecalculateProgress()
 	return p, nil
@@ -79,6 +113,98 @@ func slugify(s string) string {
 		s = strings.ReplaceAll(s, "--", "-")
 	}
 	return strings.Trim(s, "-")
+}
+
+// ParseTasksFromPRDBody scans a PRD markdown body for tasks written
+// inline as H3 headings under an H2 tasks section. Recognized shapes:
+//
+//	## Tasks                # or "## Implementation", "## Steps", etc.
+//
+//	### 1.1 Render the dry-run prompt
+//
+//	The loop should produce a context bundle …
+//
+//	**Acceptance**: prompt rendered, exit 0.
+//
+//	### 1.2 Honor the iteration cap
+//	…
+//
+// Each `### N.M Title` becomes one AutoTask:
+//   - ID    = N.M
+//   - Title = the heading text after the ID
+//   - Description = the markdown between this heading and the next
+//     `### …` or `## …` heading (trimmed)
+//   - ParentID inferred from N.M (parent of 1.1 is "1")
+//   - Status pending, Priority/Complexity medium
+//
+// Returns nil (not an error) when no tasks section or no numbered
+// headings are present. The caller decides what to do about empty
+// results.
+func ParseTasksFromPRDBody(content string) []AutoTask {
+	lines := strings.Split(content, "\n")
+	inTasksSection := false
+	var tasks []AutoTask
+	var current *AutoTask
+	var descBuf []string
+
+	flush := func() {
+		if current == nil {
+			return
+		}
+		current.Description = strings.TrimSpace(strings.Join(descBuf, "\n"))
+		tasks = append(tasks, *current)
+		current = nil
+		descBuf = nil
+	}
+
+	for _, line := range lines {
+		trimmed := strings.TrimRight(line, " \t")
+
+		// H2 boundary: opens or closes the tasks-section scope.
+		if strings.HasPrefix(trimmed, "## ") {
+			flush()
+			inTasksSection = taskSectionRegex.MatchString(trimmed)
+			continue
+		}
+		// H1 always closes the tasks section.
+		if strings.HasPrefix(trimmed, "# ") {
+			flush()
+			inTasksSection = false
+			continue
+		}
+		if !inTasksSection {
+			continue
+		}
+		if m := taskHeadingRegex.FindStringSubmatch(trimmed); m != nil {
+			flush()
+			id, title := m[1], strings.TrimSpace(m[2])
+			current = &AutoTask{
+				ID:         id,
+				Title:      title,
+				Status:     StatusPending,
+				Priority:   PriorityMedium,
+				Complexity: ComplexityMedium,
+				ParentID:   parentIDFrom(id),
+				Source:     SourcePRD,
+			}
+			continue
+		}
+		if current != nil {
+			descBuf = append(descBuf, line)
+		}
+	}
+	flush()
+	return tasks
+}
+
+// parentIDFrom returns the dotted-parent of a task ID, or "" when the
+// ID has no parent (top-level "1", "2", etc.). "1.1" → "1"; "1.2.3" → "1.2".
+func parentIDFrom(id string) string {
+	idx := strings.LastIndex(id, ".")
+	if idx <= 0 {
+		return ""
+	}
+	return id[:idx]
 }
 
 // ParseTaskMarkdown turns the generate-tasks Markdown checklist into

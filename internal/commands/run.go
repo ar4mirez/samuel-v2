@@ -208,6 +208,16 @@ func runRunInit(cmd *cobra.Command, _ []string) error {
 		}
 		p = converted
 		p.Config = cfg
+		// Issue #4: if the conversion finds zero tasks, warn the user
+		// with the exact shapes the parser accepts. Silently producing
+		// an empty loop is the failure mode that wasted a manual test
+		// in rc.5; an explicit hint is cheaper than another round-trip.
+		if len(p.Tasks) == 0 {
+			ui.Warn("PRD parsed but no tasks recognized. Accepted formats:")
+			ui.ListItem(1, "inline: `### N.M Title` headings under a `## Tasks` (or `## Implementation`, `## Steps`, `## Work Items`) section in the PRD")
+			ui.ListItem(1, "companion: a `tasks-%s` file alongside the PRD with `- [ ] N.M Title` checklist lines", filepath.Base(prdPath))
+			ui.Dim("Run `samuel run enqueue <title>` to add tasks manually, then `samuel run start`.")
+		}
 	} else {
 		p = prd.NewAutoPRD(filepath.Base(cwd), "Autonomous loop project")
 		p.Config = cfg
@@ -482,6 +492,11 @@ func runRunConvert(cmd *cobra.Command, args []string) error {
 	converted, err := prd.ConvertMarkdownToPRD(prdPath, tasksPath)
 	if err != nil {
 		return err
+	}
+	if len(converted.Tasks) == 0 {
+		ui.Warn("PRD parsed but no tasks recognized. Accepted formats:")
+		ui.ListItem(1, "inline: `### N.M Title` headings under a `## Tasks` (or `## Implementation`, `## Steps`, `## Work Items`) section in the PRD")
+		ui.ListItem(1, "companion: a `tasks-%s` file alongside the PRD with `- [ ] N.M Title` checklist lines", filepath.Base(prdPath))
 	}
 	out := prd.PRDPath(cwd)
 	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
