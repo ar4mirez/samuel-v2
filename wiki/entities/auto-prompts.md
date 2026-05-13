@@ -78,7 +78,7 @@ The runtime `.claude/auto/prompt.md` in v1's own repo (`samuel_v1/.claude/auto/p
 Externalize from Go string literals to template files:
 
 ```
-samuel_v2/templates/auto/
+samuel/templates/auto/
 ├── prompt.md.tmpl              # Go template, rendered with AutoConfig
 └── discovery-prompt.md.tmpl
 ```

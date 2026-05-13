@@ -189,7 +189,7 @@ Findings:
 - **RFD 0004 pattern worth porting**: skip interactive prompts when CLI flags fully specify operation (not `--non-interactive`, not TTY detection — flag detection).
 - **RFD vs PRD distinction**: RFD = "Why + What options"; PRD = "What + How". Flow: Idea → RFD → PRD → Tasks → Code.
 
-v2 plan: write eight inaugural RFDs in `samuel_v2/docs/rfd/` covering plugin architecture, AGENTS.md primary, SemVer + capabilities, methodology hooks, component-lifecycle, run rename, plugin migration, drop gstack/gbrain. List in [[synthesis/v2-rfds-to-write]].
+v2 plan: write eight inaugural RFDs in `samuel/docs/rfd/` covering plugin architecture, AGENTS.md primary, SemVer + capabilities, methodology hooks, component-lifecycle, run rename, plugin migration, drop gstack/gbrain. List in [[synthesis/v2-rfds-to-write]].
 
 ## [2026-05-12] ingest | Pass 9: v1 template + docs
 

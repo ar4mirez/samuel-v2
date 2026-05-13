@@ -127,7 +127,7 @@ Provenance attestation (SLSA Level 2+) is encouraged but not required for v2.0. 
 
 - **Blessed WASM toolchain**: **TinyGo** first. Ship a `samuel plugin new --tinygo` scaffold + base imports. Rust supported (any WASI-compatible toolchain works); AssemblyScript documented but not blessed.
 - **Container runtime detect order**: Podman (rootless preferred) → Docker → other OCI-compatible runtimes. `SAMUEL_RUNTIME` env var overrides detection.
-- **OCI plugin invocation protocol** (resolved 2026-05-12, RFD 0001 Committed): **gRPC over Unix socket via `/samuel-bridge`**. Protobuf schema at `samuel_v2/api/proto/plugin/v1/`. Higher overhead than stdio JSON but enables streaming, bidirectional capability calls, and strong typing. WASM plugins continue to use direct wazero function calls (no protocol needed for in-process invocation).
+- **OCI plugin invocation protocol** (resolved 2026-05-12, RFD 0001 Committed): **gRPC over Unix socket via `/samuel-bridge`**. Protobuf schema at `samuel/api/proto/plugin/v1/`. Higher overhead than stdio JSON but enables streaming, bidirectional capability calls, and strong typing. WASM plugins continue to use direct wazero function calls (no protocol needed for in-process invocation).
 
 ## Open
 

@@ -108,7 +108,7 @@ UX details that survived:
 
 ### `#rescue` — port nearly verbatim
 
-- **Makefile** — same targets, retarget paths to `samuel_v2/`.
+- **Makefile** — same targets, retarget paths to `samuel/`.
 - **`.goreleaser.yaml`** — same shape. Update `project_name`, `release.github.name`, repository owner if needed.
 - **GitHub Actions** — same workflows. Update Go version to whatever ships in 2026 (1.24+ likely).
 - **`install.sh`** — same script. Update `GITHUB_REPO` if the v2 repo lives elsewhere.
@@ -141,7 +141,7 @@ Per the decisions filed earlier, add to v2's release workflow:
    ```yaml
    - name: AGENTS.md template line check
      run: |
-       lines=$(wc -l < samuel_v2/template/AGENTS.md.tmpl)
+       lines=$(wc -l < samuel/template/AGENTS.md.tmpl)
        if [ "$lines" -gt 150 ]; then
          echo "::error::AGENTS.md template is $lines lines (limit: 150). See RFD 0001."
          exit 1

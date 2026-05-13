@@ -116,7 +116,7 @@ Pilot mode found and fixed real issues:
 
 ### `cmd/samuel/main.go` — `#rescue`
 
-Port verbatim. Standard Go layout, no improvements needed. v2's `samuel_v2/cmd/samuel/main.go` will be roughly identical:
+Port verbatim. Standard Go layout, no improvements needed. v2's `samuel/cmd/samuel/main.go` will be roughly identical:
 
 ```go
 func main() {

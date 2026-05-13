@@ -9,7 +9,7 @@ tags: [anchor, v2, v2-decision]
 
 # Samuel v2
 
-The rebuild. Lives at `samuel_v2/` (currently empty). Clean break — v1 will be deprecated on release as if it never existed.
+The rebuild. Lives at `samuel/` (currently empty). Clean break — v1 will be deprecated on release as if it never existed.
 
 ## Positioning
 

@@ -136,10 +136,10 @@ A check in v2's release CI verifies the invariant:
 - name: Agnostic-by-design check
   run: |
     # Framework binary must not write CLAUDE.md
-    grep -r '"CLAUDE\.md"' samuel_v2/internal/ && \
+    grep -r '"CLAUDE\.md"' samuel/internal/ && \
       { echo "::error::Framework references CLAUDE.md by literal — should be in claude-translator plugin"; exit 1; }
     # Framework binary must not write .claude/ paths
-    grep -r '"\.claude/' samuel_v2/internal/ && \
+    grep -r '"\.claude/' samuel/internal/ && \
       { echo "::error::Framework writes to .claude/ — should be in claude-translator plugin"; exit 1; }
     echo "✓ Agnostic invariant holds"
 ```

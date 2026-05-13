@@ -39,7 +39,7 @@ Target: AGENTS.md at ~100 lines.
 ## v2 template layout
 
 ```
-samuel_v2/template/
+samuel/template/
 ├── AGENTS.md.tmpl                  # ~100 lines, Go template
 ├── samuel.toml.tmpl                # initial config
 └── .samuel/

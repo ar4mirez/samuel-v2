@@ -9,7 +9,7 @@ tags: [v2, v2-decision, rfd, roadmap]
 
 # v2 RFDs to write
 
-Every major v2 design decision filed in the wiki should be converted to an RFD in `samuel_v2/docs/rfd/`. The wiki is exploratory; the RFDs are the **public, queryable, attributable** historical record.
+Every major v2 design decision filed in the wiki should be converted to an RFD in `samuel/docs/rfd/`. The wiki is exploratory; the RFDs are the **public, queryable, attributable** historical record.
 
 This page is the migration list from wiki concepts → numbered RFDs.
 
@@ -30,7 +30,7 @@ Eight RFDs covering the v2 architecture. Each is a clean port of an existing wik
 
 ## Convention
 
-- File path: `samuel_v2/docs/rfd/0001.md` (4-digit zero-padded).
+- File path: `samuel/docs/rfd/0001.md` (4-digit zero-padded).
 - Frontmatter: per [[concepts/rfd-process]] (`rfd`, `title`, `state`, `authors`, `labels`, `created`, `updated`, `discussion`, `related_prd`).
 - Body structure: Summary → Problem → Background → Options → Decision → Implementation → Outcome.
 

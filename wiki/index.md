@@ -7,7 +7,7 @@ updated: 2026-05-12
 
 # Samuel Wiki
 
-Knowledge base for the Samuel v2 rebuild. v1 lives in `samuel_v1/` as reference. v2 lives in `samuel_v2/`.
+Knowledge base for the Samuel v2 rebuild. v1 lives in `samuel_v1/` as reference. v2 lives in `samuel/`.
 
 See [[CLAUDE]] for conventions.
 

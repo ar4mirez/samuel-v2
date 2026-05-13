@@ -9,7 +9,7 @@ This wiki tracks the design and rebuild of **Samuel** — an opinionated AI codi
 Two codebases coexist in `/Users/ar4mirez/Documents/Claude/Projects/Samuel/`:
 
 - `samuel_v1/` — the original shipped version (Go CLI, mkdocs site, ~30+ language skills, `.claude/` hooks, RFD index). Reference material only — extract patterns worth keeping.
-- `samuel_v2/` — **shipped at v2.0.0-rc.15** as of 2026-05-13. The rebuild lives here. Goals: simplify, make extensible — both achieved. Manual-test fixture lives at `samuel_v2/examples/tetris/`; hermetic e2e suite at `samuel_v2/e2e/hermetic/`.
+- `samuel/` — **shipped at v2.0.0-rc.15** as of 2026-05-13. The rebuild lives here. Goals: simplify, make extensible — both achieved. Manual-test fixture lives at `samuel/examples/tetris/`; hermetic e2e suite at `samuel/e2e/hermetic/`.
 
 The wiki sits between these two. It is the place where v1 patterns get studied, v2 design decisions get recorded, and the gap between them gets bridged. **Post-launch**, it also ingests lessons from the v2 release-candidate cycle — see [[synthesis/v2-rc-cycle-lessons]] for the rc.2 → rc.15 review.
 

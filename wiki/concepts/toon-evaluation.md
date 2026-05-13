@@ -161,7 +161,7 @@ Mix encodings inside `.samuel/run/` according to this rule. Don't force one form
 
 ## Open
 
-- **Go library audit.** As of May 2026, the TOON reference implementation is TypeScript. Check `github.com/toon-format/*` for Go implementations. If none, write `samuel_v2/internal/encoding/toon/` (small surface — v3 spec rules fit in ~200 lines of Go).
+- **Go library audit.** As of May 2026, the TOON reference implementation is TypeScript. Check `github.com/toon-format/*` for Go implementations. If none, write `samuel/internal/encoding/toon/` (small surface — v3 spec rules fit in ~200 lines of Go).
 - **CLI mutation prompt rewrite.** The auto-mode prompts ([[entities/auto-prompts]]) need updating to instruct the agent to use `samuel run done|skip|reset|enqueue` via Bash tool, not edit `prd.toon` directly. Lands in v2.0 alongside TOON adoption.
 - **TOON version migration helper.** If TOON v4 lands and breaks the row format, ship a `samuel run migrate-encoding` tool that re-emits the file under the new spec. Same pattern as Cargo.lock format migrations.
 - **Cost measurement post-launch.** Benchmark same pilot-mode run with JSON vs TOON. Token-delta data informs whether to push TOON into other surfaces (samuel.lock?) later.

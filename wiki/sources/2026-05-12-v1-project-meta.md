@@ -116,7 +116,7 @@ So the user's external "v1" is internally **post-3.0.0 with Unreleased changes p
 
 - **Hero tagline for v2**. v1's "the autonomous AI coding loop your CLI needs" stays mostly intact, but the framework reshape changes the supporting bullets. New angle: "framework + skills hub for AI coding assistants" or similar.
 - **README install paths**. Same shape, update URLs.
-- **CHANGELOG version timeline**. v2.0.0 will be a new line in this CHANGELOG (or a fresh file in `samuel_v2/`).
+- **CHANGELOG version timeline**. v2.0.0 will be a new line in this CHANGELOG (or a fresh file in `samuel/`).
 
 ### `#drop`
 
@@ -125,7 +125,7 @@ So the user's external "v1" is internally **post-3.0.0 with Unreleased changes p
 
 ### `#open`
 
-- **Where does v2's CHANGELOG start?** Fresh file at `samuel_v2/CHANGELOG.md` with v2.0.0 as the first entry, or continue v1's file? Recommend: fresh file. v2 is a clean break, the CHANGELOG should reflect that.
+- **Where does v2's CHANGELOG start?** Fresh file at `samuel/CHANGELOG.md` with v2.0.0 as the first entry, or continue v1's file? Recommend: fresh file. v2 is a clean break, the CHANGELOG should reflect that.
 - **`/autoplan` workflow** — v1 used some kind of structured-planning workflow with CEO and DX advisor "phases." Not part of the v1 codebase I ingested. Likely external Claude conversations or PRD-driven planning. Worth asking the user about for v2.
 
 ## Related pages
