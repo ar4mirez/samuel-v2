@@ -14,6 +14,7 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'template/**'
+      - 'e2e/**'
       - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
@@ -22,6 +23,7 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'template/**'
+      - 'e2e/**'
       - '.github/workflows/ci.yml'
 
 jobs:
@@ -64,6 +66,23 @@ jobs:
         with:
           version: latest
           args: --timeout=5m
+
+  e2e-hermetic:
+    name: E2E (hermetic)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+          cache: true
+      - name: Download dependencies
+        run: go mod download
+      # The hermetic suite builds its own `samuel` binary in TestMain
+      # and runs it via exec.Command against tempdir fixtures. No
+      # network, no live registry — see e2e/README.md.
+      - name: E2E hermetic suite
+        run: go test -tags=e2e -count=1 ./e2e/hermetic/...
 
   build:
     name: Build (Multi-platform)

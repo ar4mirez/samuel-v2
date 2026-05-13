@@ -7,6 +7,51 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.0-rc.15] — Hermetic e2e test suite
+
+Partial close on [Issue #7](https://github.com/samuelpkg/samuel/issues/7) (hermetic tier — the live-registry tier is still scoped for follow-up).
+
+### Added
+
+- **`e2e/hermetic/`** — deterministic end-to-end test suite, build tag
+  `e2e`. Builds the `samuel` binary once per `go test` invocation
+  (`TestMain`), then per test: spins up a tempdir + isolated HOME,
+  materializes a local file:// registry pointing at a shared
+  `testdata/sample-skill/` payload, invokes the actual binary via
+  `exec.Command`, and asserts on stdout / files / exit code.
+
+  **27 tests across 5 blocks**, mirroring the manual sweep that shook
+  out rc.6 → rc.14:
+  - `translator_test.go` (5) — rc.4 built-in mirror + rc.5 default-on
+  - `install_test.go` (8) — rc.3 registry parser + rc.14 dry-run +
+    general pipeline
+  - `update_test.go` (4) — rc.7 cache key + flag parity + verification
+    reason
+  - `doctor_test.go` (6) — rc.10 stub advisory + rc.11 plugin health +
+    rc.14 `--fix` repairs
+  - `run_test.go` (4) — rc.5/rc.8/rc.12 run-loop init, empty-queue
+    hint, inline-task parser, mutations
+
+  Full suite runs in **~3 seconds** on a reasonable laptop. Regular
+  `go test ./...` ignores the package entirely via the `e2e` build
+  tag.
+
+- **CI job `e2e-hermetic`** in `.github/workflows/ci.yml`. Runs on
+  every push to main and every PR alongside the existing unit-test
+  job. `e2e/**` added to the workflow's path triggers so changes to
+  the suite re-run it.
+
+### Documented (`e2e/README.md`)
+
+- The hermetic vs. live tier split and what each is for.
+- The honest limitation: file:// URLs go through `source.fetchFile`,
+  so the hermetic tier cannot exercise rc.6 (v-prefix tag fallback)
+  or rc.9 (.git strip from clone). Both fixes are protected by unit
+  tests in `internal/plugin/source/source_test.go`. End-to-end
+  coverage waits for the live tier.
+- The four-helper harness API (`newProject`, `setupRegistry`,
+  `mustSamuel`, `samuel`) plus filesystem and assertion shims.
+
 ## [v2.0.0-rc.14] — Doctor `--fix` repairs plugins; install `--dry-run` is honest
 
 Closes [Issue #8](https://github.com/samuelpkg/samuel/issues/8) and
