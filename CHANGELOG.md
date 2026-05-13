@@ -7,6 +7,42 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.0-rc.13] — `samuel init` ships gitignore rules for transient state
+
+### Added
+
+- **`samuel init` now writes `.samuel/.gitignore`** covering the
+  transient state samuel writes inside the managed dir during normal
+  operation:
+
+  ```text
+  lock        # runtime PID file (concurrent-command guard)
+  run/        # autonomous-loop state (prd.toon, progress.md)
+  plugins/    # installed plugin artifacts
+  builtins/   # mirror of the global tree (regenerable via doctor --fix)
+  ```
+
+  Without this, every user running `samuel init` inside a git repo saw
+  these paths untracked on first `git status` and had to figure out
+  the gitignore rules themselves. A post-test cleanup of
+  `examples/tetris` surfaced the leak — `.samuel/lock` was bleeding
+  through despite the repo-level gitignore. Idempotent: a user-edited
+  `.samuel/.gitignore` is preserved across `samuel init --force`.
+
+- **`samuel init`'s success summary prints a one-line tip** about
+  root-level entries (`CLAUDE.md`, `samuel.lock`) that the user may
+  want to add to their project's `.gitignore`. The framework
+  intentionally does not auto-write the root `.gitignore` because
+  whether to commit the CLAUDE.md mirror or the install lockfile is a
+  project-level decision (similar to `Cargo.lock` for bin vs. lib).
+
+### Changed
+
+- Repo-level `.gitignore` simplified: removed the four `examples/*/.samuel/*`
+  patterns that are now covered by each example's own
+  `.samuel/.gitignore`. Only `examples/*/CLAUDE.md` and
+  `examples/*/samuel.lock` (both root-level) remain.
+
 ## [v2.0.0-rc.12] — PRD parser accepts inline task headings
 
 Closes [Issue #4](https://github.com/samuelpkg/samuel/issues/4).

@@ -31,13 +31,9 @@ Thumbs.db
 # Source of truth lives in scaffolds/ and v1's .claude/skills/.
 /migration-output/
 
-# Example projects: keep the framework setup + sample PRDs tracked,
-# but ignore everything the CLI regenerates on init/sync/install/run.
-# `samuel doctor --fix` and a fresh `samuel install …` reproduce all
-# of these from the tracked samuel.toml + samuel.lock-less state.
+# Example projects: ignore root-level transient state. The matching
+# entries inside `.samuel/` (lock, run/, plugins/, builtins/) live in
+# each example's own `.samuel/.gitignore`, which samuel init writes
+# for every new project — so we don't have to duplicate them here.
 examples/*/CLAUDE.md
 examples/*/samuel.lock
-examples/*/.samuel/lock
-examples/*/.samuel/builtins/
-examples/*/.samuel/plugins/
-examples/*/.samuel/run/

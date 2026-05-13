@@ -165,6 +165,66 @@ func TestInit_EndToEnd_ProducesExpectedLayout(t *testing.T) {
 	}
 }
 
+func TestInit_WritesSamuelDotGitignore(t *testing.T) {
+	// Regression: every user running `samuel init` inside a git repo
+	// would see .samuel/lock, .samuel/run/, .samuel/plugins/, and
+	// .samuel/builtins/ untracked on first `git status` and have to
+	// figure out the gitignore rules themselves. Init now writes a
+	// .samuel/.gitignore covering all four.
+	_, project := withHomeAndProject(t)
+	captureOutput(t)
+
+	ResetFlagsForTest()
+	cmd := rootCmd
+	cmd.SetArgs([]string{"init", ".", "--yes", "--minimal"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+
+	body, err := os.ReadFile(filepath.Join(project, ".samuel", ".gitignore"))
+	if err != nil {
+		t.Fatalf("expected .samuel/.gitignore: %v", err)
+	}
+	for _, expected := range []string{"lock", "run/", "plugins/", "builtins/"} {
+		if !strings.Contains(string(body), expected) {
+			t.Errorf(".samuel/.gitignore missing entry %q; body was: %s", expected, body)
+		}
+	}
+}
+
+func TestInit_PreservesUserEditedSamuelDotGitignore(t *testing.T) {
+	// The auto-written .gitignore is user-owned once it exists. A
+	// re-run of `samuel init --force` (or a subsequent doctor --fix
+	// that touches layout) must not clobber edits.
+	_, project := withHomeAndProject(t)
+	captureOutput(t)
+	ResetFlagsForTest()
+	cmd := rootCmd
+	cmd.SetArgs([]string{"init", ".", "--yes", "--minimal"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("first init: %v", err)
+	}
+	gitignorePath := filepath.Join(project, ".samuel", ".gitignore")
+	custom := "# user edits\nnever-clobber-me\n"
+	if err := os.WriteFile(gitignorePath, []byte(custom), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	ResetFlagsForTest()
+	cmd.SetArgs([]string{"init", ".", "--yes", "--minimal", "--force"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("re-init: %v", err)
+	}
+
+	got, err := os.ReadFile(gitignorePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != custom {
+		t.Errorf("user-edited gitignore was clobbered; want %q got %q", custom, got)
+	}
+}
+
 func TestInit_RefusesInsideSamuelRepo(t *testing.T) {
 	home := t.TempDir()
 	project := t.TempDir()
