@@ -7,6 +7,23 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.0-rc.9] — Drop plugin repo `.git/` from installs
+
+Closes [Issue #1](https://github.com/samuelpkg/samuel/issues/1).
+
+### Fixed
+
+- **`samuel install` no longer copies the plugin repo's `.git/`
+  directory into `.samuel/plugins/<name>/`.** Samuel resolves
+  installed plugins by name + lockfile digest, not by walking commit
+  history, so the git plumbing had no downstream consumer. It
+  inflated installs (`actix-web` dropped from 31 files / 176K to
+  6 files / 56K — a 68% reduction), surprised IDE git integrations
+  with nested repos, and made `find -name .git` noisy across the
+  project tree. `fetchGit` now removes the cloned `.git/` directory
+  after a successful clone, before returning the materialized source
+  to the install pipeline.
+
 ## [v2.0.0-rc.8] — run start: actionable empty-queue exit
 
 Closes [Issue #5](https://github.com/samuelpkg/samuel/issues/5).

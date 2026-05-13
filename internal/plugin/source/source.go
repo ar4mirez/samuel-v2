@@ -152,6 +152,14 @@ func fetchGit(ctx context.Context, req FetchRequest, cloneURL string) (*Fetched,
 		cmd := exec.CommandContext(ctx, "git", args...)
 		out, err := cmd.CombinedOutput()
 		if err == nil {
+			// Drop the cloned .git/ before returning. Samuel resolves
+			// installed plugins by name + lockfile digest, not by
+			// walking commit history, so the git plumbing has no
+			// downstream consumer. Leaving it in place inflates the
+			// install (~120K of 176K on actix-web), surprises IDE git
+			// integrations, and creates a nested git repo inside the
+			// host project's tree.
+			_ = os.RemoveAll(filepath.Join(dest, ".git"))
 			root := dest
 			if req.Subpath != "" {
 				root = filepath.Join(dest, req.Subpath)

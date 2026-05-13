@@ -90,6 +90,32 @@ func TestFetchGit_RefNotFoundEvenAfterFallback(t *testing.T) {
 	}
 }
 
+func TestFetchGit_StripsDotGitFromCheckout(t *testing.T) {
+	// Regression: rc.7 left the cloned plugin's .git/ tree under
+	// `.samuel/plugins/<name>/`, bloating installs (~68% of an
+	// actix-web install was git plumbing) and creating a nested git
+	// repo inside the host project. Plugin resolution uses the
+	// lockfile digest, not commit history, so .git/ has no downstream
+	// consumer (issue #1).
+	cloneURL := initFixtureRepo(t, "v1.0.0")
+	req := FetchRequest{
+		Repo: cloneURL,
+		Ref:  "v1.0.0",
+	}
+	got, err := fetchGit(context.Background(), req, cloneURL)
+	if err != nil {
+		t.Fatalf("fetchGit: %v", err)
+	}
+	defer got.Cleanup()
+
+	if _, err := os.Stat(filepath.Join(got.Root, "README.md")); err != nil {
+		t.Errorf("expected README.md to survive: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(got.Root, ".git")); !os.IsNotExist(err) {
+		t.Errorf(".git directory must not exist after fetch; err=%v", err)
+	}
+}
+
 func TestVPrefixedSemver(t *testing.T) {
 	cases := map[string]string{
 		"":               "",
