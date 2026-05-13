@@ -9,8 +9,8 @@ Rails for AI coding assistants. A small Go CLI that ships a framework, a plugin 
 
 ## What it is
 
-- **Agent-agnostic.** `AGENTS.md` is the canonical project context. `CLAUDE.md`, `.cursor/rules/`, `.codex/*` are produced by translator plugins — the framework knows about none of them.
-- **Plugin-driven.** Three tiers: **skill** (text + scripts), **WASM** (sandboxed via wazero), **OCI** (containers for heavy tools). Every plugin signed by Sigstore keyless OIDC.
+- **Agent-agnostic with a Claude carve-out.** `AGENTS.md` is the canonical project context. `.cursor/rules/`, `.codex/*`, and future tool-specific surfaces are produced by translator plugins — the framework knows about none of them. The lone exception is the AGENTS.md → CLAUDE.md mirror, which ships in core because Claude Code is the only major coding assistant that doesn't read AGENTS.md natively.
+- **Plugin-driven.** Three tiers: **skill** (text + scripts), **WASM** (sandboxed via wazero), **OCI** (containers for heavy tools). Plugins are intended to be signed by Sigstore keyless OIDC. **v2.0 caveat:** the default verifier is a policy-only stub — `identity_patterns` and `allow_unsigned_for` are enforced, but no Sigstore math runs. `samuel doctor` prints a one-line advisory until v2.1 wires the sigstore-go backend.
 - **Methodology built in.** The 4D loop (Deconstruct / Diagnose / Develop / Deliver) with Ralph-Wiggum-style iteration cap as the default. Methodology plugins add hooks; the framework runs the loop.
 - **TOON-encoded runtime.** State files (`.samuel/run/*.toon`) are token-efficient for LLM context. Markdown stays for prose-heavy logs.
 - **CLI-mutation pattern.** The agent never edits state directly — it runs `samuel run done <id>` or `samuel run skip <id>`. The CLI owns the schema; the agent owns the decisions.

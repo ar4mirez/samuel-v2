@@ -312,6 +312,50 @@ func TestDoctor_HealthyAfterInit(t *testing.T) {
 	_ = project
 }
 
+func TestDoctor_StubVerifierAdvisorySurfaced(t *testing.T) {
+	// Regression for issue #6: while v2.0 ships StubVerifier as the
+	// default, `samuel doctor` must surface that signatures are not
+	// cryptographically verified so the install command's
+	// `signature: verified (...)` line can't be read as a stronger
+	// trust signal than it actually is.
+	_, _ = withHomeAndProject(t)
+	captureOutput(t)
+
+	ResetFlagsForTest()
+	cmd := rootCmd
+	cmd.SetArgs([]string{"init", ".", "--yes", "--minimal"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	// Re-capture so out holds only doctor's output, not the init
+	// prefix. Same pattern as TestDoctor_HealthyAfterInit.
+	out, _ := captureOutput(t)
+	cmd.SetArgs([]string{"doctor", "--json"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("doctor: %v", err)
+	}
+	var env struct {
+		Data map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &env); err != nil {
+		t.Fatalf("doctor json parse: %v\nout: %s", err, out.String())
+	}
+	advisories, _ := env.Data["advisories"].([]any)
+	if len(advisories) == 0 {
+		t.Fatalf("expected stub-verifier advisory in doctor output; got %+v", env.Data)
+	}
+	found := false
+	for _, a := range advisories {
+		if s, _ := a.(string); strings.Contains(s, "stubbed") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected an advisory mentioning 'stubbed'; got %+v", advisories)
+	}
+}
+
 func TestDoctor_FixRepairsProjectBuiltins(t *testing.T) {
 	// Acceptance criterion: `samuel doctor --fix` repairs a project
 	// with manually deleted `.samuel/builtins/`. v2's PRD resolved the

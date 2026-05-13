@@ -320,6 +320,24 @@ type cachedResult struct {
 // implementation gated by the same Verifier interface.
 func Default() Verifier { return StubVerifier{} }
 
+// IsProduction reports whether the default verifier performs
+// cryptographic signature verification. v2.0 returns false because the
+// default is StubVerifier — policy is enforced (identity_patterns,
+// allow_unsigned_for, AllowUnsigned), but no Sigstore math runs. v2.1
+// will flip this to true when the sigstore-go backend lands.
+//
+// Used by `samuel doctor` to surface a one-line disclosure so users
+// know what "signature: verified (...)" currently means.
+func IsProduction() bool {
+	_, stub := Default().(StubVerifier)
+	return !stub
+}
+
+// StubAdvisory is the one-line disclosure `samuel doctor` shows when
+// IsProduction() returns false. Kept here so the wording lives next to
+// the truth it describes.
+const StubAdvisory = "verifier is stubbed in v2.0 — policy is enforced but signatures are not cryptographically validated. Real Sigstore verification ships in v2.1."
+
 // Describe returns a one-line description of how a result will be
 // rendered to the user.
 func Describe(r Result) string {

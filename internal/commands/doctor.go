@@ -10,6 +10,7 @@ import (
 
 	"github.com/samuelpkg/samuel/internal/errors"
 	"github.com/samuelpkg/samuel/internal/plugin"
+	"github.com/samuelpkg/samuel/internal/plugin/verify"
 	"github.com/samuelpkg/samuel/internal/ui"
 )
 
@@ -72,6 +73,16 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// lives in detectV1Leftovers so this comment can stay neutral.
 	unmanaged := detectV1Leftovers()
 
+	// Trust-honesty disclosure: the v2.0 default verifier is a stub
+	// that enforces policy but not cryptographic signatures. Surface
+	// that so users reading `signature: verified (...)` understand
+	// what the line currently means. Empty slice when v2.1+ ships a
+	// production-grade verifier (verify.IsProduction returns true).
+	var advisories []string
+	if !verify.IsProduction() {
+		advisories = append(advisories, verify.StubAdvisory)
+	}
+
 	if fix {
 		for i, c := range checks {
 			if c.OK {
@@ -110,11 +121,12 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 			"summary":      summarize(checks),
 			"suggestions":  suggestions,
 			"v1_leftovers": unmanaged,
+			"advisories":   advisories,
 		})
 		return nil
 	}
 
-	renderDoctorHuman(checks, suggestions, unmanaged)
+	renderDoctorHuman(checks, suggestions, unmanaged, advisories)
 	return nil
 }
 
@@ -221,7 +233,7 @@ func summarize(checks []checkResult) map[string]int {
 	return out
 }
 
-func renderDoctorHuman(checks []checkResult, suggestions []string, unmanaged []string) {
+func renderDoctorHuman(checks []checkResult, suggestions []string, unmanaged []string, advisories []string) {
 	ui.Bold("Samuel doctor")
 	for _, c := range checks {
 		if c.OK {
@@ -239,6 +251,13 @@ func renderDoctorHuman(checks []checkResult, suggestions []string, unmanaged []s
 	s := summarize(checks)
 	ui.Print("")
 	ui.Bold("Summary: %d passed, %d failed, %d fixable, %d fixed", s["passed"], s["failed"], s["fixable"], s["fixed"])
+	if len(advisories) > 0 {
+		ui.Print("")
+		ui.Section("Advisories")
+		for _, a := range advisories {
+			ui.Warn("%s", a)
+		}
+	}
 	if len(suggestions) > 0 {
 		ui.Print("")
 		ui.Section("Suggested translator plugins")

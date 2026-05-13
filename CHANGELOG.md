@@ -7,6 +7,36 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.0-rc.10] — Surface that signature verification is stubbed in v2.0
+
+Closes [Issue #6](https://github.com/samuelpkg/samuel/issues/6).
+
+### Added
+
+- **`samuel doctor` now prints a one-line Advisories section** when
+  the default verifier is the v2.0 stub:
+
+  ```text
+  Advisories:
+  ⚠ verifier is stubbed in v2.0 — policy is enforced but signatures
+    are not cryptographically validated. Real Sigstore verification
+    ships in v2.1.
+  ```
+
+  Also surfaces in the JSON envelope under a new `advisories` field.
+  `verify.IsProduction()` is the single source of truth: it returns
+  `false` in v2.0 (`Default()` is `StubVerifier`); when v2.1 swaps in
+  the sigstore-go backend it returns `true` and the advisory
+  disappears.
+
+### Changed
+
+- **README updated** for honesty on two stale claims:
+  - The "agent-agnostic" bullet now acknowledges the deliberate Claude
+    carve-out introduced in rc.4.
+  - The "signed by Sigstore" bullet now includes a v2.0 caveat
+    pointing at the doctor advisory.
+
 ## [v2.0.0-rc.9] — Drop plugin repo `.git/` from installs
 
 Closes [Issue #1](https://github.com/samuelpkg/samuel/issues/1).
