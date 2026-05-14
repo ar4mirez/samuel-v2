@@ -20,6 +20,14 @@ on:
         description: 'Override SAMUEL_LIVE_REGISTRY_URL (default: github.com/samuelpkg/samuel-test-registry)'
         required: false
         default: ''
+      simulate_nightly:
+        description: 'Treat this run as a nightly — open/close issues on failure/recovery. Use for reproducing the auto-issue flow on demand.'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: read
@@ -66,7 +74,7 @@ jobs:
           retention-days: 14
 
       - name: Open / update issue on failure
-        if: failure() && github.event_name == 'schedule'
+        if: failure() && (github.event_name == 'schedule' || github.event.inputs.simulate_nightly == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FAILING: ${{ steps.run.outputs.failing_tests }}
@@ -107,7 +115,7 @@ jobs:
           done
 
       - name: Auto-close issues on recovery
-        if: success() && github.event_name == 'schedule'
+        if: success() && (github.event_name == 'schedule' || github.event.inputs.simulate_nightly == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
