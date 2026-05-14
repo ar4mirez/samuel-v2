@@ -55,13 +55,19 @@ type Policy struct {
 // DefaultPolicy is the starting policy used when samuel.toml has no
 // [security] block: signed-by-default for the official registry, with
 // the standard samuelpkg identity allowlist.
+//
+// `**` matches any sequence (including `/` and `@`), which is what
+// GitHub Actions OIDC SANs require: a real signing identity looks like
+// `https://github.com/<org>/<repo>/.github/workflows/<file>@refs/tags/<ver>`,
+// not just `<org>/<repo>`. The single-segment `*` glob would only
+// accept the latter and reject every real-world signed plugin.
 func DefaultPolicy() Policy {
 	return Policy{
 		SignedDefault:    true,
 		AllowUnsignedFor: []string{"local", "dev"},
 		IdentityPatterns: []string{
-			"https://github.com/samuelpkg/*",
-			"https://github.com/anthropics/skills/*",
+			"https://github.com/samuelpkg/**",
+			"https://github.com/anthropics/skills/**",
 		},
 		TrustedRoot: "https://tuf-repo-cdn.sigstore.dev",
 	}
@@ -163,14 +169,24 @@ func RegistryAllowsUnsigned(p Policy, name string) bool {
 }
 
 // globMatch implements the limited "*" glob used in identity_patterns:
-// "*" matches one path segment by default; "**" or trailing "*" match
-// the rest of the string. Sufficient for "https://github.com/samuelpkg/*".
+// "*" matches one path segment; "**" matches any number of segments
+// (including slashes). For matching registry source strings, both
+// behave the same — the registry source is `host/<org>/<repo>` with
+// no further depth. The distinction matters at the SAN-regex layer
+// (sigstore.go's globToRegex). `**` must be checked before `*` since
+// "**" trivially ends in "*" too.
 func globMatch(pattern, s string) bool {
 	switch {
 	case pattern == s:
 		return true
-	case pattern == "*":
+	case pattern == "*" || pattern == "**":
 		return true
+	case strings.HasSuffix(pattern, "/**"):
+		prefix := strings.TrimSuffix(pattern, "/**")
+		return strings.HasPrefix(s, prefix+"/")
+	case strings.HasSuffix(pattern, "**"):
+		prefix := strings.TrimSuffix(pattern, "**")
+		return strings.HasPrefix(s, prefix)
 	case strings.HasSuffix(pattern, "/*"):
 		prefix := strings.TrimSuffix(pattern, "/*")
 		return strings.HasPrefix(s, prefix+"/")
