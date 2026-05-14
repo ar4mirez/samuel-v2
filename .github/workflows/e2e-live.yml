@@ -5,6 +5,18 @@ name: E2E (live)
 # (one per failed test). Successes after a red day auto-close that
 # issue. The hermetic suite (CI workflow) is the PR gate; this job is
 # NEVER a required check. See e2e/live/README.md for the contract.
+#
+# Repo precondition: the labels `e2e-live-red` and `nightly` MUST
+# exist in the repo before the auto-issue step can succeed —
+# `gh issue create --label <name>` fails fast on a missing label.
+# Create them once with:
+#
+#   gh label create e2e-live-red --color B60205 \
+#       --description "Nightly live e2e test failing"
+#   gh label create nightly      --color 0E8A16 \
+#       --description "Set by the nightly e2e-live auto-issue flow"
+#
+# (Forks adopting this workflow need the same step.)
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
