@@ -5,8 +5,8 @@ on:
     tags: ["v*.*.*"]
 
 permissions:
-  contents: read
-  id-token: write
+  contents: write   # softprops/action-gh-release needs write to publish the release
+  id-token: write   # keyless cosign signing via OIDC
 
 jobs:
   build-and-publish:

@@ -246,7 +246,7 @@ on:
     tags: ["v*.*.*"]
 
 permissions:
-  contents: read
+  contents: write   # softprops/action-gh-release needs write to publish the release
   id-token: write   # keyless cosign signing via OIDC
 
 jobs:
