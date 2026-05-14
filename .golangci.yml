@@ -30,7 +30,9 @@ linters:
   settings:
     errcheck:
       # Functions whose returned error is conventionally ignored at
-      # the call site (CLI output + cleanup).
+      # the call site (CLI output + cleanup). Wazero Close(ctx) takes
+      # a context.Context arg so it doesn't satisfy io.Closer and
+      # needs explicit listing.
       exclude-functions:
         - fmt.Fprint
         - fmt.Fprintln
@@ -39,6 +41,10 @@ linters:
         - (*os.File).Close
         - (*bytes.Buffer).WriteString
         - (*strings.Builder).WriteString
+        - (github.com/tetratelabs/wazero.Runtime).Close
+        - (github.com/tetratelabs/wazero.CompiledModule).Close
+        - (github.com/tetratelabs/wazero/api.Module).Close
+        - (github.com/tetratelabs/wazero/api.Closer).Close
     staticcheck:
       checks:
         - all
@@ -48,7 +54,11 @@ linters:
         - -QF1008
         - -QF1011
         - -QF1012
-        # ST1xxx — style-tier checks (omit type, naming).
+        # ST1xxx — style-tier checks (comment form, receiver names,
+        # omit type). Pre-existing in untouched files.
+        - -ST1016
+        - -ST1020
+        - -ST1021
         - -ST1023
 
 issues:
