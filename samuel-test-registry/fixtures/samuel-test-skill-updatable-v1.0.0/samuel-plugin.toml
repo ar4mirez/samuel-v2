@@ -1,0 +1,7 @@
+name = "samuel-test-skill-updatable"
+version = "1.0.0"
+kind = "skill"
+summary = "Live-e2e fixture: updatable skill at version 1.0.0."
+
+[capabilities]
+required = ["filesystem.read"]

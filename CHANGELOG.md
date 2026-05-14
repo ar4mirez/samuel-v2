@@ -7,6 +7,75 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.0.1] — Live-registry e2e tier closes the rc-cycle recurrence gap
+
+The v2.0 rc cycle exposed two regressions that lived in
+`source.fetchGit` and only manifested against a real git remote: rc.6
+(v-prefix tag fallback) and rc.9 (`.git` strip on install). Both have
+unit-test coverage. Neither had CLI-surface coverage, because the
+hermetic e2e tier routes `file://` URLs through `source.fetchFile`. A
+future regression in `fetchGit` would not have been caught by any
+automated test before v2.0.1.
+
+This release closes that gap with a second e2e tier (`e2e/live/`)
+that drives the real `samuel` binary against a public test registry
+(`github.com/samuelpkg/samuel-test-registry`) on a nightly cadence.
+
+### Added
+
+- **`e2e/live/` test suite** with build tag `e2e_live`. Runs against
+  the public `samuelpkg/samuel-test-registry`. Coverage includes:
+  - `TestInstall_VPrefixedTag_Fetches` — rc.6 v-prefix fallback at
+    the CLI surface.
+  - `TestInstall_StripsDotGit` — rc.9 `.git` strip from cloned
+    plugin tree.
+  - `TestInstall_RegistryIndexParses` — happy-path install + lockfile
+    write against a real HTTPS-fetched index.
+  - `TestInstall_UnknownPlugin_StructuredError` — actionable error
+    surface for missing plugin names.
+  - `TestUpdate_LiveRegistry_BumpsVersion` — 1.0.0 → 1.1.0 update
+    against the two-tag fixture.
+  - `TestSearch_FindsByKeyword`, `TestDoctor_LiveInstalledPlugin_HealthOK`,
+    `TestUninstall_RemovesFromLockAndTree`.
+- **Nightly workflow** at `.github/workflows/e2e-live.yml`. Schedule
+  `0 5 * * *` UTC; manual dispatch supported. On failure, opens a
+  deduped GitHub issue labeled `e2e-live-red` (one per failing test
+  name). On recovery, auto-closes matching issues with a recovery
+  comment. Live tier is *never* a required check — the hermetic suite
+  remains the PR gate.
+- **`samuel-test-registry/`** at the repo root: source-of-truth content
+  for the external registry repo, including the five fixture plugins
+  (`samuel-test-skill-{basic,tagged-v,tagged-bare,with-git,updatable}`)
+  and `index.toml`. Publish steps documented in
+  `samuel-test-registry/README.md`.
+- **`docs/reference/testing.md`** — user-facing tier matrix
+  (hermetic vs live; when each runs; wall-time budgets).
+- **`scripts/e2e-live-regression-smoke.sh`** — reproducible
+  smoke-test for the auto-issue flow. Induces a rc.6-style regression
+  in a throwaway branch, verifies the nightly opens an issue, reverts,
+  verifies the issue auto-closes.
+- **`e2e-live` status badge** in `README.md`.
+
+### Tooling & docs
+
+- `e2e/README.md` rewritten for the two-tier matrix; new
+  `e2e/live/README.md` documents the "live tests are allowed to fail;
+  PR gate is hermetic" contract, wall-time budget (2 min), and
+  one-retry flake policy.
+- `retryOnce(t, fn)` helper in the live harness for network-bound
+  assertions. Cap is one retry by design — anything that needs more
+  belongs in the hermetic tier where the harness can make it
+  deterministic.
+- `SAMUEL_LIVE_REGISTRY_URL` environment override so contributors can
+  point the live suite at a fork without forking the harness.
+
+### Caveats
+
+- Fixture plugins are unsigned in v2.0.1. The harness exports
+  `SAMUEL_VERIFY_ALLOW_UNSIGNED=1` on every `samuel` invocation. Real
+  Sigstore verification of the test fixtures lands with PRD 0008
+  (sigstore-go integration) in v2.1.
+
 ## [v2.0.0-rc.16] — `samuel run` works on a fresh host
 
 ### Fixed

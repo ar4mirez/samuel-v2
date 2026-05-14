@@ -1,0 +1,7 @@
+name = "samuel-test-skill-tagged-v"
+version = "1.0.0"
+kind = "skill"
+summary = "Live-e2e fixture: release tagged v1.0.0 (rc.6 v-prefix protection)."
+
+[capabilities]
+required = ["filesystem.read"]

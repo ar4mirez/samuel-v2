@@ -3,6 +3,7 @@
 Rails for AI coding assistants. A small Go CLI that ships a framework, a plugin loader, and an opinionated methodology — everything tool-specific lives in plugins.
 
 [![CI](https://github.com/samuelpkg/samuel/actions/workflows/ci.yml/badge.svg)](https://github.com/samuelpkg/samuel/actions/workflows/ci.yml)
+[![E2E (live)](https://github.com/samuelpkg/samuel/actions/workflows/e2e-live.yml/badge.svg)](https://github.com/samuelpkg/samuel/actions/workflows/e2e-live.yml)
 [![Release](https://github.com/samuelpkg/samuel/actions/workflows/release.yml/badge.svg)](https://github.com/samuelpkg/samuel/actions/workflows/release.yml)
 [![Docs](https://github.com/samuelpkg/samuel/actions/workflows/docs.yml/badge.svg)](https://samuelpkg.github.io/samuel/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

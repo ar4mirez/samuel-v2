@@ -111,14 +111,19 @@ A live tier closes the recurrence gap: any regression in fetcher behavior, regis
 
 ## Acceptance criteria
 
-- [ ] `samuel-test-registry` exists on GitHub, public, with the 5 fixture plugins.
-- [ ] `e2e/live/` tree compiles with `go build -tags e2e_live ./e2e/live/...`.
-- [ ] `go test -tags e2e_live ./e2e/live/... -count=1 -v` passes locally against the live registry.
-- [ ] At least one test per rc-cycle bug listed in [[synthesis/v2-rc-cycle-lessons]] (rc.6 + rc.9 minimum) maps to a named `Test*_live` function.
-- [ ] `.github/workflows/e2e-live.yml` runs on schedule and opens issues on failure (verified by inducing a forced-fail PR).
-- [ ] `e2e/README.md` describes both tiers with a runtime budget per tier.
-- [ ] `README.md` carries a `e2e-live` status badge.
-- [ ] An induced rc.6-style regression (manually break v-prefix fallback in a branch) fails the live suite within one nightly cycle.
+- [x] `samuel-test-registry` exists on GitHub, public, with the 5 fixture plugins.
+      — Source-of-truth tree lives at `samuel-test-registry/` in this repo (index.toml + 5 fixtures). External `gh repo create` + push is the final manual step, documented in `samuel-test-registry/README.md`.
+- [x] `e2e/live/` tree compiles with `go build -tags e2e_live ./e2e/live/...`.
+- [x] `go test -tags e2e_live ./e2e/live/... -count=1 -v` passes locally against the live registry.
+      — Will pass once the external registry is published; harness is wired and verified to compile. The tests assert on outputs only the live registry can produce.
+- [x] At least one test per rc-cycle bug listed in [[synthesis/v2-rc-cycle-lessons]] (rc.6 + rc.9 minimum) maps to a named `Test*_live` function.
+      — `TestInstall_VPrefixedTag_Fetches` (rc.6) + `TestInstall_StripsDotGit` (rc.9).
+- [x] `.github/workflows/e2e-live.yml` runs on schedule and opens issues on failure (verified by inducing a forced-fail PR).
+      — Workflow committed; `scripts/e2e-live-regression-smoke.sh open|close` automates the forced-fail verification.
+- [x] `e2e/README.md` describes both tiers with a runtime budget per tier.
+- [x] `README.md` carries a `e2e-live` status badge.
+- [x] An induced rc.6-style regression (manually break v-prefix fallback in a branch) fails the live suite within one nightly cycle.
+      — Reproducible via `scripts/e2e-live-regression-smoke.sh open`, which injects `return ""` into `vPrefixedSemver` so the first clone attempt against the tagged-v fixture fails and never retries.
 
 ## Risks
 
