@@ -67,6 +67,10 @@ jobs:
         id: run
         env:
           SAMUEL_LIVE_REGISTRY_URL: ${{ github.event.inputs.registry_url }}
+          # PRD 0009 §Functional 7: opt-in flag for the wasm-tier live
+          # tests. samuel-go-guide-wasm@0.1.0 is registered in
+          # samuel-registry; flip to "1" enables TestWASM_Live_*.
+          SAMUEL_LIVE_WASM_PLUGIN: "1"
         run: |
           set +e
           go test -tags=e2e_live -count=1 -v ./e2e/live/... 2>&1 | tee live-output.log
