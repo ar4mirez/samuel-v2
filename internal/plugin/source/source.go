@@ -39,6 +39,12 @@ type FetchRequest struct {
 	Subpath string
 	// Workdir is an optional staging directory; empty means TempDir.
 	Workdir string
+	// Kind is the plugin kind hint from the registry index. When set to
+	// "wasm" for a github.com/... repo, the default Fetcher prefers
+	// release assets (plugin.wasm + cosign bundle) over a git clone.
+	// Empty string preserves the legacy git-clone behavior for
+	// skill / oci / meta tiers.
+	Kind string
 }
 
 // Fetched describes the materialized source.
@@ -72,6 +78,19 @@ func (defaultFetcher) Fetch(ctx context.Context, req FetchRequest) (*Fetched, er
 	switch {
 	case strings.HasPrefix(repo, "file://"):
 		return fetchFile(req, strings.TrimPrefix(repo, "file://"))
+	case strings.HasPrefix(repo, "github.com/") && strings.EqualFold(req.Kind, "wasm"):
+		// PRD 0009 release-asset path: wasm-tier plugins ship
+		// plugin.wasm + cosign bundle as github release assets, not in
+		// the git tree. Pull from the release first; fall back to a
+		// git clone when no release is present (legacy plugins, dev
+		// snapshots) so non-released forks still work.
+		owner, name, ok := splitGitHubRepo(repo)
+		if ok {
+			if got, rerr := fetchGitHubRelease(ctx, req, owner, name); rerr == nil {
+				return got, nil
+			}
+		}
+		return fetchGit(ctx, req, "https://"+repo+".git")
 	case strings.HasPrefix(repo, "https://") || strings.HasPrefix(repo, "http://"):
 		return fetchGit(ctx, req, repo)
 	case strings.HasPrefix(repo, "github.com/"):

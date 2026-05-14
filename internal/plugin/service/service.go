@@ -118,6 +118,7 @@ func (s *Service) Install(ctx context.Context, opts InstallOptions) (*Result, er
 		Repo:    regPlugin.Repo,
 		Ref:     version,
 		Subpath: regPlugin.Subpath,
+		Kind:    regPlugin.Kind,
 	})
 	if err != nil {
 		return nil, err
