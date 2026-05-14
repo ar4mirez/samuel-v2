@@ -33,6 +33,20 @@ var (
 // testRegistrySources lets tests pin a fixture index URL.
 var testRegistrySources []registry.Source
 
+// envAllowUnsigned reports whether SAMUEL_VERIFY_ALLOW_UNSIGNED is set
+// to a truthy value. Lets the e2e/live test harness (and ad-hoc
+// scripts) flip the same kill-switch the CLI flag exposes — without
+// retrofitting --allow-unsigned into every shell invocation. Treated
+// as a strict opt-in: only `1`, `true`, `yes` (case-insensitive)
+// activate. Empty / unset / `0` keep the default policy in force.
+func envAllowUnsigned() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("SAMUEL_VERIFY_ALLOW_UNSIGNED"))) {
+	case "1", "true", "yes":
+		return true
+	}
+	return false
+}
+
 // testOciEngine lets tests inject a fake OCI engine without a real
 // container runtime.
 var testOciEngine oci.Engine
@@ -148,6 +162,9 @@ func runInstall(cmd *cobra.Command, args []string) error {
 
 	yes, _ := cmd.Flags().GetBool("yes")
 	allowUnsigned, _ := cmd.Flags().GetBool("allow-unsigned")
+	if envAllowUnsigned() {
+		allowUnsigned = true
+	}
 	allowPrerelease, _ := cmd.Flags().GetBool("allow-prerelease")
 	force, _ := cmd.Flags().GetBool("force")
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
@@ -557,6 +574,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// would have made the prior decision sticky — see
 	// verify.Cache.VerifyBlob).
 	allowUnsigned, _ := cmd.Flags().GetBool("allow-unsigned")
+	if envAllowUnsigned() {
+		allowUnsigned = true
+	}
 	allowPrerelease, _ := cmd.Flags().GetBool("allow-prerelease")
 	nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
 	dryRun, _ := cmd.Flags().GetBool("dry-run")

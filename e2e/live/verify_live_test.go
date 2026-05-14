@@ -3,9 +3,23 @@
 package live
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
+
+// verifyFixturesAvailable reports whether the signed / unsigned /
+// wrong-identity test fixtures have been published. The test-registry
+// shipped without them (PRD 0008's sign-fixtures.yml workflow was
+// scoped but never built), so the four TestVerify_* tests skip by
+// default. Flip SAMUEL_LIVE_VERIFY_FIXTURES=1 once
+// samuel-test-skill-signed, samuel-test-skill-unsigned, and
+// samuel-test-skill-wrong-identity exist as standalone repos under
+// samuelpkg, are registered in samuel-test-registry, and (for the
+// signed one) carry a cosign --new-bundle-format sigstore bundle.
+func verifyFixturesAvailable() bool {
+	return os.Getenv("SAMUEL_LIVE_VERIFY_FIXTURES") == "1"
+}
 
 // Verify block — PRD 0008 live coverage of the sigstore-go verifier.
 //
@@ -28,6 +42,9 @@ import (
 // OIDC subject must match the default identity_patterns
 // (`https://github.com/samuelpkg/*`).
 func TestVerify_SignedFixture_Verifies(t *testing.T) {
+	if !verifyFixturesAvailable() {
+		t.Skip("samuel-test-skill-signed not yet in registry; set SAMUEL_LIVE_VERIFY_FIXTURES=1 once the cosign-signed fixture repo exists")
+	}
 	p := newProject(t)
 	p.pointAtLiveRegistry()
 	// NOTE: explicitly DO NOT use withAllowUnsigned — we want the
@@ -48,6 +65,9 @@ func TestVerify_SignedFixture_Verifies(t *testing.T) {
 // is structured and carries a DocsURL pointing at the signing concepts
 // page.
 func TestVerify_UnsignedFixture_RejectsWithoutFlag(t *testing.T) {
+	if !verifyFixturesAvailable() {
+		t.Skip("samuel-test-skill-unsigned not yet in registry; set SAMUEL_LIVE_VERIFY_FIXTURES=1 once the unsigned fixture repo exists")
+	}
 	p := newProject(t)
 	p.pointAtLiveRegistry()
 
@@ -69,6 +89,9 @@ func TestVerify_UnsignedFixture_RejectsWithoutFlag(t *testing.T) {
 // --allow-unsigned escape hatch still works after the v2.1 flip; the
 // lockfile records Reason=--allow-unsigned for audit.
 func TestVerify_UnsignedFixture_AcceptsWithFlag(t *testing.T) {
+	if !verifyFixturesAvailable() {
+		t.Skip("samuel-test-skill-unsigned not yet in registry; set SAMUEL_LIVE_VERIFY_FIXTURES=1 once the unsigned fixture repo exists")
+	}
 	p := newProject(t)
 	p.pointAtLiveRegistry()
 	withAllowUnsigned(t)
@@ -88,6 +111,9 @@ func TestVerify_UnsignedFixture_AcceptsWithFlag(t *testing.T) {
 // verification. The error must cite the identity-pattern mismatch so
 // the user knows what to do.
 func TestVerify_WrongIdentity_Rejects(t *testing.T) {
+	if !verifyFixturesAvailable() {
+		t.Skip("samuel-test-skill-wrong-identity not yet in registry; set SAMUEL_LIVE_VERIFY_FIXTURES=1 once the wrong-identity fixture repo exists")
+	}
 	p := newProject(t)
 	p.pointAtLiveRegistry()
 
