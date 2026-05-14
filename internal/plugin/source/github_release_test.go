@@ -31,15 +31,11 @@ func TestFetchGitHubRelease_HappyPath(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	// Use the test helper variant that takes the base URL directly so
-	// we don't have to monkey-patch the github.com host.
+	// Use downloadOne directly so we don't have to monkey-patch the
+	// github.com host — same wire format as downloadReleaseAssets,
+	// just with the test server as the base.
 	dest := t.TempDir()
 	client := srv.Client()
-	if err := downloadReleaseAssets(context.Background(), client, "", "", "", dest); err == nil {
-		// downloadReleaseAssets requires non-empty owner/name/tag in
-		// production. We test the wire format here by calling
-		// downloadOne directly below — keeps the assertion focused.
-	}
 
 	for fname, want := range assets {
 		out := filepath.Join(dest, filepath.Base(fname))
