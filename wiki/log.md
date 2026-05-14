@@ -7,6 +7,22 @@ updated: 2026-05-13
 
 # Wiki Log
 
+## [2026-05-13] roadmap | next 5 PRDs drafted (0007–0011)
+
+With v2.0.0-rc.16 shipped and the Tetris fixture PRD complete, drafted the next batch of framework PRDs from the wiki's open backlog ("What's left after rc.15" in [[synthesis/v2-rc-cycle-lessons]] + the open questions in [[CLAUDE]]):
+
+- **PRD 0007 — Live-registry e2e tier** (v2.0.1). Closes [Issue #10](https://github.com/samuelpkg/samuel/issues/10). Stands up `e2e/live/` against a real `samuel-test-registry` to cover the `fetchGit` path the hermetic tier can't reach. Five fixture plugins per the rc.6 + rc.9 matrix; nightly CI with auto-issue on red.
+- **PRD 0008 — Real Sigstore verifier (v2.1.0)**. Closes [Issue #6 final](https://github.com/samuelpkg/samuel/issues/6). Swaps `verify.StubVerifier` for `sigstore-go`. Wire format and lockfile schema stable across the transition. `verify.IsProduction()` flips to true; doctor advisory drops. New RFD 0009.
+- **PRD 0009 — WASM plugin tier (v2.2.0)**. Completes wazero embedding + capability enforcement at WASI boundary. <50ms cold-start budget gated in CI. TinyGo first; reference plugin `samuel-go-guide-wasm` exercises the full path. `samuel new plugin --kind=wasm` scaffolding. New RFD 0010.
+- **PRD 0010 — OCI plugin tier + network policy (v2.3.0)**. Resolves the long-open network-policy question: **deny-by-default with per-call consent prompts** (recorded in PRD's Decision section). Container runtime detection (Podman-rootless → Podman → Docker), reference plugin `samuel-claude-code-oci` packaging Claude Code as an OCI plugin, `samuel run --sandbox=oci` for agent containerization. New RFD 0011.
+- **PRD 0011 — v1 skill migration execution (v2.3.x rolling)**. The mechanical conversion of 78 v1 skills per RFD 0007's plan: 4 built-in (verify), 12 starter-pack meta-plugin, 58 pure plugins, 2 dropped. Migration script + repo provisioning script + signing workflow templates. Populates the registry from near-empty to ~71 entries.
+
+Ordering: 0007 → 0008 → 0009 → 0010 → 0011. Each lands a clean version. PRDs 0009 and 0010 introduce `samuel new plugin --kind=*` scaffolding (shared work across the two PRDs); PRD 0011 depends on both for ecosystem credibility but its mechanical surface area is independent.
+
+Dropped from this batch (worth tracking, lower priority): private plugin registry auth (wait for real user demand), RFDs 0009–0012 written alongside their implementing PRDs rather than ahead.
+
+PRD files: `samuel/.samuel/tasks/0007-prd-live-registry-e2e.md` through `0011-prd-skill-migration-execution.md`.
+
 ## [2026-05-13] ingest | v2 rc.2 → rc.15 cycle lessons
 
 Samuel v2 shipped at rc.2 on 2026-05-12 ("Public release"). Within 24 hours a manual-test sweep against a fresh `samuel init` fixture surfaced 9 issues and forced 13 more release candidates before the codebase reached genuine ship-ready state.
