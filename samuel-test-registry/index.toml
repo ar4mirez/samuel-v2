@@ -52,3 +52,49 @@ description = "Live fixture: two-version repo for the update-path test."
 categories = ["test"]
 tags = ["fixture", "samuel-e2e-live", "update"]
 kind = "skill"
+
+# --- PRD 0008 signing fixtures ---
+# The three plugins below back the sigstore-verifier live e2e tier
+# (e2e/live/verify_live_test.go). Each is paired with a specific
+# signing configuration in the test-registry release workflow:
+#
+#   - signed:           cosign sign-blob --bundle, OIDC identity
+#                       matching identity_patterns.
+#   - unsigned:         no signature_bundle published. Verify must
+#                       fail without --allow-unsigned.
+#   - wrong-identity:   real signature, OIDC subject outside the
+#                       identity_patterns allowlist. Verify must reject.
+
+[[plugins]]
+name = "samuel-test-skill-signed"
+repo = "github.com/samuelpkg/samuel-test-skill-signed"
+latest = "1.0.0"
+versions = ["1.0.0"]
+description = "Live fixture: signed against samuel-test-registry identity (PRD 0008)."
+categories = ["test"]
+tags = ["fixture", "samuel-e2e-live", "signed"]
+kind = "skill"
+# Sidecar bundle URL — sigstore-go bundle JSON, attached as a release asset.
+signature_bundle = "https://github.com/samuelpkg/samuel-test-skill-signed/releases/download/v1.0.0/SKILL.md.bundle"
+
+[[plugins]]
+name = "samuel-test-skill-unsigned"
+repo = "github.com/samuelpkg/samuel-test-skill-unsigned"
+latest = "1.0.0"
+versions = ["1.0.0"]
+description = "Live fixture: intentionally unsigned — verify must fail without --allow-unsigned (PRD 0008)."
+categories = ["test"]
+tags = ["fixture", "samuel-e2e-live", "unsigned"]
+kind = "skill"
+# Intentionally no signature_bundle URL.
+
+[[plugins]]
+name = "samuel-test-skill-wrong-identity"
+repo = "github.com/samuelpkg/samuel-test-skill-wrong-identity"
+latest = "1.0.0"
+versions = ["1.0.0"]
+description = "Live fixture: real signature, identity outside the default allowlist (PRD 0008)."
+categories = ["test"]
+tags = ["fixture", "samuel-e2e-live", "wrong-identity"]
+kind = "skill"
+signature_bundle = "https://github.com/samuelpkg/samuel-test-skill-wrong-identity/releases/download/v1.0.0/SKILL.md.bundle"

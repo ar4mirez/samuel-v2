@@ -373,12 +373,11 @@ func TestDoctor_HealthyAfterInit(t *testing.T) {
 	_ = project
 }
 
-func TestDoctor_StubVerifierAdvisorySurfaced(t *testing.T) {
-	// Regression for issue #6: while v2.0 ships StubVerifier as the
-	// default, `samuel doctor` must surface that signatures are not
-	// cryptographically verified so the install command's
-	// `signature: verified (...)` line can't be read as a stronger
-	// trust signal than it actually is.
+func TestDoctor_VerifierAdvisorySurfaced(t *testing.T) {
+	// v2.1 follow-up to issue #6: the doctor advisory now reports the
+	// production sigstore-go verifier by default. When
+	// SAMUEL_VERIFY_STUB=1 is set, the stub-mode banner surfaces
+	// instead so the test-mode escape hatch is visible.
 	_, _ = withHomeAndProject(t)
 	captureOutput(t)
 
@@ -403,17 +402,18 @@ func TestDoctor_StubVerifierAdvisorySurfaced(t *testing.T) {
 	}
 	advisories, _ := env.Data["advisories"].([]any)
 	if len(advisories) == 0 {
-		t.Fatalf("expected stub-verifier advisory in doctor output; got %+v", env.Data)
+		t.Fatalf("expected verifier advisory in doctor output; got %+v", env.Data)
 	}
 	found := false
 	for _, a := range advisories {
-		if s, _ := a.(string); strings.Contains(s, "stubbed") {
+		s, _ := a.(string)
+		if strings.Contains(s, "sigstore-go") || strings.Contains(s, "stub") {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("expected an advisory mentioning 'stubbed'; got %+v", advisories)
+		t.Errorf("expected an advisory mentioning the verifier (sigstore-go / stub); got %+v", advisories)
 	}
 }
 

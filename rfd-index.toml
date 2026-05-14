@@ -7,7 +7,7 @@
 #   Discussion / Published / Committed / Abandoned: docs/rfd/ (public)
 
 schema_version = 1
-next_number = 9
+next_number = 10
 
 [[rfds]]
 number = "0001"
@@ -104,3 +104,15 @@ updated = "2026-05-12"
 path = "docs/rfd/0008.md"
 discussion = ""
 related_prd = ""
+
+[[rfds]]
+number = "0009"
+title = "Plugin signing via Sigstore enforcement (v2.1)"
+state = "Committed"
+authors = ["ar4mirez"]
+labels = ["v2", "v2.1", "signing", "sigstore", "security", "plugin-verify"]
+created = "2026-05-13"
+updated = "2026-05-14"
+path = "docs/rfd/0009.md"
+discussion = ""
+related_prd = "0008-prd-sigstore-verifier.md"

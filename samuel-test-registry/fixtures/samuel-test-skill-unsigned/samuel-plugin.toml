@@ -1,0 +1,11 @@
+name = "samuel-test-skill-unsigned"
+version = "1.0.0"
+kind = "skill"
+summary = "PRD 0008 fixture: intentionally unsigned. Verify rejects without --allow-unsigned."
+
+# No signature_bundle URL is published in samuel-test-registry/index.toml
+# for this fixture. The default policy demands a signature, so install
+# must fail-closed with a structured error pointing at the docs URL.
+
+[capabilities]
+required = ["filesystem.read"]

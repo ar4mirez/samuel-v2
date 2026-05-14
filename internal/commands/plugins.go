@@ -200,18 +200,33 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		if len(res.Grants) > 0 {
 			ui.ListItem(1, "capabilities: %d would be granted", len(res.Grants))
 		}
-		ui.ListItem(1, "signature: %s", verify.Describe(res.Verified))
+		renderSignatureLines(res)
 		return nil
 	}
-	ui.Success("Installed %s@%s (%s)", res.Name, res.Version, res.Kind)
+	if res.Verified.Identity != "" {
+		ui.Success("Installed %s@%s (%s) (signed by %s)", res.Name, res.Version, res.Kind, res.Verified.Identity)
+	} else {
+		ui.Success("Installed %s@%s (%s)", res.Name, res.Version, res.Kind)
+	}
 	if res.Digest != "" {
 		ui.ListItem(1, "digest: %s", res.Digest)
 	}
 	if len(res.Grants) > 0 {
 		ui.ListItem(1, "capabilities: %d granted", len(res.Grants))
 	}
-	ui.ListItem(1, "signature: %s", verify.Describe(res.Verified))
+	renderSignatureLines(res)
 	return nil
+}
+
+// renderSignatureLines prints the signature: line plus a one-line
+// banner when SAMUEL_VERIFY_STUB=1 is active. Surfacing the stub state
+// on every install (not just doctor) keeps the verifier swap honest
+// when a user has opted into the test-mode escape hatch.
+func renderSignatureLines(res *service.Result) {
+	ui.ListItem(1, "signature: %s", verify.Describe(res.Verified))
+	if !verify.IsProduction() {
+		ui.Warn("%s", verify.StubAdvisory)
+	}
 }
 
 // listInstalledForBareInstall is the smart-bare-invocation branch:

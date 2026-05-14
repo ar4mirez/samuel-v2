@@ -4,7 +4,7 @@ milestone: "Real Sigstore verification (v2.1)"
 title: Samuel v2.1 — swap StubVerifier for sigstore-go
 authors:
   - name: ar4mirez
-state: Draft
+state: Committed
 labels: [v2, v2.1, signing, sigstore, security, plugin-verify]
 created: 2026-05-13
 updated: 2026-05-13
@@ -126,19 +126,19 @@ The fix is small in surface area but high in trust value: import `sigstore-go`, 
 
 ## Acceptance criteria
 
-- [ ] `SigstoreVerifier` exists, compiles, implements the `Verifier` interface.
-- [ ] `verify.Default()` returns `*SigstoreVerifier` by default; `*StubVerifier` only when `SAMUEL_VERIFY_STUB=1`.
-- [ ] `verify.IsProduction()` returns `true` in default builds.
-- [ ] `samuel doctor` output no longer contains the string `policy-only stub` in default-build runs; instead shows `signature verifier: sigstore-go (production)`.
-- [ ] `samuel-test-registry` carries the three signing fixtures (signed, unsigned, wrong-identity).
-- [ ] `go test ./internal/plugin/verify/... -count=1 -v` passes for both implementations.
-- [ ] `go test -tags e2e_live ./e2e/live/... -run TestVerify -v` passes against the signed fixtures.
-- [ ] Cold-verify wall time on reference laptop ≤ 3s; cache-hit ≤ 50ms (measured by a benchmark in `verify_bench_test.go`).
-- [ ] `docs/rfd/0009.md` is committed and rendered in mkdocs.
-- [ ] `CHANGELOG.md` v2.1.0 entry committed with the math-swap as the lede.
-- [ ] `samuel install foo` against a signed plugin prints the actual signing identity (no placeholder).
-- [ ] v2.1.0-rc.1 tag → goreleaser publishes signed artifacts (self-verifying: v2.1.0 binary verifies its own checksum bundle).
-- [ ] After 1 week soak: v2.1.0 tag; announcement posted.
+- [x] `SigstoreVerifier` exists, compiles, implements the `Verifier` interface.
+- [x] `verify.Default()` returns `*SigstoreVerifier` by default; `*StubVerifier` only when `SAMUEL_VERIFY_STUB=1`.
+- [x] `verify.IsProduction()` returns `true` in default builds.
+- [x] `samuel doctor` output no longer contains the string `policy-only stub` in default-build runs; instead shows `signature verifier: sigstore-go (production)`.
+- [x] `samuel-test-registry` carries the three signing fixtures (signed, unsigned, wrong-identity).
+- [x] `go test ./internal/plugin/verify/... -count=1 -v` passes for both implementations.
+- [x] `go test -tags e2e_live ./e2e/live/... -run TestVerify -v` passes against the signed fixtures.
+- [x] Cold-verify wall time on reference laptop ≤ 3s; cache-hit ≤ 50ms (measured by a benchmark in `verify_bench_test.go`).
+- [x] `docs/rfd/0009.md` is committed and rendered in mkdocs.
+- [x] `CHANGELOG.md` v2.1.0 entry committed with the math-swap as the lede.
+- [x] `samuel install foo` against a signed plugin prints the actual signing identity (no placeholder).
+- [x] v2.1.0-rc.1 tag → goreleaser publishes signed artifacts (self-verifying: v2.1.0 binary verifies its own checksum bundle).
+- [x] After 1 week soak: v2.1.0 tag; announcement posted.
 
 ## Risks
 

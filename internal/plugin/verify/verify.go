@@ -315,16 +315,23 @@ type cachedResult struct {
 	Result        Result `json:"result"`
 }
 
-// Default returns the verifier the install path uses by default. v2.0
-// ships StubVerifier; v2.1 will swap in a sigstore-go backed
-// implementation gated by the same Verifier interface.
-func Default() Verifier { return StubVerifier{} }
+// Default returns the verifier the install path uses by default. v2.1
+// returns a SigstoreVerifier (the real cryptographic math); set
+// SAMUEL_VERIFY_STUB=1 to fall back to StubVerifier for tests and
+// air-gapped environments. The policy passed here is DefaultPolicy(); the
+// install service overrides it with the project's [security] block
+// before each call.
+func Default() Verifier {
+	if os.Getenv("SAMUEL_VERIFY_STUB") == "1" {
+		return StubVerifier{}
+	}
+	return NewSigstoreVerifier(DefaultPolicy())
+}
 
 // IsProduction reports whether the default verifier performs
-// cryptographic signature verification. v2.0 returns false because the
-// default is StubVerifier — policy is enforced (identity_patterns,
-// allow_unsigned_for, AllowUnsigned), but no Sigstore math runs. v2.1
-// will flip this to true when the sigstore-go backend lands.
+// cryptographic signature verification. v2.1 flipped this to true once
+// the sigstore-go backend landed. Set SAMUEL_VERIFY_STUB=1 to flip back
+// to the stub (test mode).
 //
 // Used by `samuel doctor` to surface a one-line disclosure so users
 // know what "signature: verified (...)" currently means.
@@ -333,10 +340,10 @@ func IsProduction() bool {
 	return !stub
 }
 
-// StubAdvisory is the one-line disclosure `samuel doctor` shows when
-// IsProduction() returns false. Kept here so the wording lives next to
-// the truth it describes.
-const StubAdvisory = "verifier is stubbed in v2.0 — policy is enforced but signatures are not cryptographically validated. Real Sigstore verification ships in v2.1."
+// StubAdvisory is the disclosure surfaced when SAMUEL_VERIFY_STUB=1 is
+// active (test-mode escape hatch). The wording lives next to the truth
+// it describes.
+const StubAdvisory = "signature verifier: stub (test mode — SAMUEL_VERIFY_STUB=1 active). Cryptographic verification is skipped; samuel install will accept any artifact matching identity_patterns."
 
 // Describe returns a one-line description of how a result will be
 // rendered to the user.

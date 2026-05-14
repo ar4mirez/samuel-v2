@@ -83,13 +83,15 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// lives in detectV1Leftovers so this comment can stay neutral.
 	unmanaged := detectV1Leftovers()
 
-	// Trust-honesty disclosure: the v2.0 default verifier is a stub
-	// that enforces policy but not cryptographic signatures. Surface
-	// that so users reading `signature: verified (...)` understand
-	// what the line currently means. Empty slice when v2.1+ ships a
-	// production-grade verifier (verify.IsProduction returns true).
+	// Trust-honesty disclosure: in v2.1+ the default verifier is the
+	// sigstore-go production backend; surface a one-line confirmation
+	// so users reading `signature: verified (...)` know the math is
+	// real. When SAMUEL_VERIFY_STUB=1 is active, render the stub
+	// advisory instead so the test-mode escape hatch is visible.
 	var advisories []string
-	if !verify.IsProduction() {
+	if verify.IsProduction() {
+		advisories = append(advisories, verify.SigstoreAdvisory)
+	} else {
 		advisories = append(advisories, verify.StubAdvisory)
 	}
 

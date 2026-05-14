@@ -1,0 +1,12 @@
+name = "samuel-test-skill-signed"
+version = "1.0.0"
+kind = "skill"
+summary = "PRD 0008 fixture: signed against samuel-test-registry identity_pattern."
+
+# signature_bundle URL is published in samuel-test-registry/index.toml.
+# When the live registry's release workflow runs `cosign sign-blob
+# --bundle`, the resulting .bundle JSON is attached to the release as
+# `SKILL.md.bundle` (sibling of SKILL.md).
+
+[capabilities]
+required = ["filesystem.read"]

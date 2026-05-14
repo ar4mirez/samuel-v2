@@ -1,0 +1,70 @@
+# Release workflow for the signed live-e2e fixtures (PRD 0008).
+#
+# Triggers on tag push (v*) for any fixture repo that consumes this
+# reusable workflow. The job:
+#
+#   1. Checks out the fixture repo at the tag.
+#   2. Installs cosign (sigstore/cosign-installer@v3).
+#   3. cosign sign-blob --bundle SKILL.md → SKILL.md.bundle
+#      using keyless OIDC (token: id-token: write).
+#   4. Uploads the .bundle as a release asset (sibling of SKILL.md).
+#
+# Each fixture's identity pattern is governed by its repo name, which
+# the framework's default identity_patterns matches via the
+# `https://github.com/samuelpkg/*` and
+# `https://github.com/samuelpkg/samuel-test-registry/*` allow lists.
+#
+# The wrong-identity fixture lives under
+# github.com/samuelpkg-fixtures/* (an explicitly-non-matching org) so
+# its OIDC subject fails identity_pattern matching at install time.
+
+name: sign-fixtures
+
+on:
+  workflow_call:
+    inputs:
+      artifact:
+        description: Path to the artifact to sign (relative to repo root).
+        type: string
+        required: true
+        default: SKILL.md
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: v2.4.1
+
+      - name: Sign artifact (keyless OIDC)
+        env:
+          ARTIFACT: ${{ inputs.artifact || 'SKILL.md' }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "${ARTIFACT}" ]; then
+            echo "::warning::artifact ${ARTIFACT} not found — skipping signing"
+            exit 0
+          fi
+          cosign sign-blob \
+            --yes \
+            --bundle "${ARTIFACT}.bundle" \
+            "${ARTIFACT}"
+          ls -l "${ARTIFACT}.bundle"
+
+      - name: Upload bundle to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ inputs.artifact || 'SKILL.md' }}.bundle

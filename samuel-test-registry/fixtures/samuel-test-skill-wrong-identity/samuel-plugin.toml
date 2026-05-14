@@ -1,0 +1,12 @@
+name = "samuel-test-skill-wrong-identity"
+version = "1.0.0"
+kind = "skill"
+summary = "PRD 0008 fixture: signed under an identity that does NOT match the default identity_patterns. Verify rejects."
+
+# Signature is real but the OIDC subject points outside
+# samuel-test-registry/* (the release workflow signs from a fixture
+# repo with a non-matching identity). The default policy's
+# identity_patterns rejects this signer.
+
+[capabilities]
+required = ["filesystem.read"]

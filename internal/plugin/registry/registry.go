@@ -85,6 +85,14 @@ type Plugin struct {
 	Tags        []string `toml:"tags,omitempty"`
 	Kind        string   `toml:"kind,omitempty"`
 	Upstream    bool     `toml:"upstream,omitempty"`
+	// SignatureBundle is the URL of the sigstore-go bundle JSON that
+	// proves the artifact's signature. Required for v2.1+ when
+	// signed_default is true and the registry is not in
+	// allow_unsigned_for. Field is nullable for backwards
+	// compatibility with v2.0 registry indexes; the install path
+	// emits a structured error pointing at signing docs when the
+	// bundle URL is missing AND --allow-unsigned is not set.
+	SignatureBundle string `toml:"signature_bundle,omitempty"`
 }
 
 // Source is one configured registry. Mirrors config.Registry but lives

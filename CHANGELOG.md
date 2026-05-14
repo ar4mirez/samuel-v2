@@ -7,6 +7,111 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.1.0] — Real Sigstore verifier (math swap; `IsProduction()` flips)
+
+v2.0 shipped a policy-only `StubVerifier`: `[security]` enforcement
+worked, but no Sigstore math ran. The CLI honestly disclosed the gap
+via `samuel doctor`'s advisory line, and the public commitment was
+that v2.1 would land the real verifier without breaking the wire
+format or lockfile schema.
+
+**v2.1.0 delivers the math swap.** `verify.Default()` now returns
+`*SigstoreVerifier`, `verify.IsProduction()` returns `true`, and the
+`samuel doctor` advisory line reads `signature verifier: sigstore-go
+(production)`. The samuel.toml `[security]` schema, the lockfile
+format, and every CLI flag are unchanged across the v2.0 → v2.1
+transition — plugins signed against the test registry on v2.0 verify
+against the same identity patterns on v2.1 without re-signing.
+
+Design rationale: [RFD 0009](docs/rfd/0009.md). Tracking issue
+(closed): [#6](https://github.com/samuelpkg/samuel/issues/6).
+
+### Added
+
+- **`SigstoreVerifier`** at
+  [`internal/plugin/verify/sigstore.go`](internal/plugin/verify/sigstore.go).
+  Backed by [`github.com/sigstore/sigstore-go`](https://github.com/sigstore/sigstore-go) v1.1.4.
+  Implements the same `Verifier` interface as the stub, so
+  service-layer call sites are unchanged.
+- **TUF trust-root bootstrap** with a 24h on-disk cache under
+  `~/.samuel/cache/sigstore/trust-root/<binary-version>/`. Lazy
+  fetch from `https://tuf-repo-cdn.sigstore.dev` on first verify
+  call; 3 retries with exponential backoff on transient failures.
+- **Signing-identity in install output**: `samuel install foo` now
+  surfaces the actual OIDC identity from the signature
+  (`Installed foo@1.0.0 (signed by https://github.com/...)`); on
+  failure the structured error includes the Rekor log entry URL.
+- **`SAMUEL_VERIFY_STUB=1`** env var to fall back to `StubVerifier`
+  (test-mode escape hatch). When active, every `samuel install`
+  emits a one-line banner so the override is impossible to miss.
+- **`signature_bundle`** field on `registry.Plugin` (nullable for
+  backwards compatibility). v2.1 registry indexes SHOULD publish
+  the bundle URL; verify code emits a structured error when the
+  bundle is missing AND `--allow-unsigned` is not set.
+- **Signed live-e2e fixtures** in
+  [`samuel-test-registry/`](samuel-test-registry/):
+  `samuel-test-skill-signed`, `samuel-test-skill-unsigned`,
+  `samuel-test-skill-wrong-identity`. Driven by
+  [`e2e/live/verify_live_test.go`](e2e/live/verify_live_test.go) and the
+  reusable
+  [`sign-fixtures.yml`](samuel-test-registry/.github/workflows/sign-fixtures.yml)
+  cosign + OIDC release workflow.
+- **Dual-run test corpus**: existing `verify_test.go` tests run
+  against both `StubVerifier` and `SigstoreVerifier` via
+  matrix-style sub-tests so behavior drift between the two
+  surfaces is visible immediately.
+- **Perf-budget benchmarks**
+  ([`verify_bench_test.go`](internal/plugin/verify/verify_bench_test.go)):
+  cold (≤ 3s), trust-cached (≤ 500ms), warm cache-hit (≤ 50ms).
+  Cold-path benchmarks are gated by `SAMUEL_BENCH_NETWORK=1` to
+  keep the unit tier hermetic.
+- **RFD 0009** — "Plugin signing via Sigstore enforcement (v2.1)"
+  ([`docs/rfd/0009.md`](docs/rfd/0009.md)); registered in `rfd-index.toml`.
+
+### Changed
+
+- `verify.Default()` returns `*SigstoreVerifier` by default;
+  `*StubVerifier` only when `SAMUEL_VERIFY_STUB=1`.
+- `verify.IsProduction()` returns `true` in default builds.
+- `samuel doctor` no longer renders the v2.0 stub disclosure line;
+  shows `signature verifier: sigstore-go (production)` instead.
+  When `SAMUEL_VERIFY_STUB=1`, renders the stub-mode banner.
+- `samuel install` success line surfaces the actual signing
+  identity from the Result (when available) instead of a generic
+  "verified".
+- Rewrote
+  [`docs/plugin-authors/signing.md`](docs/plugin-authors/signing.md):
+  dropped the stub-disclosure paragraph; added the "How sigstore-go
+  verification works" sequence diagram and the v2.1 status section.
+- [`docs/reference/cli.md`](docs/reference/cli.md):
+  `--allow-unsigned` description tightened to call out that it now
+  overrides real sigstore-go verification, not a stub.
+- [`samuel-test-registry/README.md`](samuel-test-registry/README.md):
+  documented the v2.1 `signature_bundle` expectation and the
+  manual `cosign verify-blob` smoke-check after publish.
+
+### Wire-format + lockfile stability
+
+The `samuel.toml` `[security]` schema, the `samuel.lock` format, and
+every CLI flag are unchanged across the v2.0 → v2.1 transition. No
+user-facing migration is required.
+
+### Dependencies
+
+- `github.com/sigstore/sigstore-go` v1.1.4 (pinned exact version;
+  bump requires a security-focused PR per RFD 0009).
+
+### Migration notes
+
+- **No samuel.toml changes**.
+- **No lockfile changes**.
+- **CLI flags unchanged**.
+- The one observable behavioral break: unsigned plugins (no
+  `signature_bundle` URL in the registry index) now fail with a
+  structured error unless `--allow-unsigned` is set; on v2.0 the
+  stub allowed them silently when policy passed. Tested by the
+  `samuel-test-skill-unsigned` live fixture.
+
 ## [v2.0.1] — Live-registry e2e tier closes the rc-cycle recurrence gap
 
 The v2.0 rc cycle exposed two regressions that lived in
