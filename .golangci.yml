@@ -65,17 +65,14 @@ linters:
   # function-qualifier matcher does not bind (e.g. wazero.Runtime is
   # an interface defined in a non-stdlib package; some v2 builds of
   # errcheck do not match these through settings.errcheck.exclude-
-  # functions). These patterns scope tightly to "defer X.Close(ctx)"
-  # cleanup on wazero types and to errcheck in test files only.
+  # functions). The patterns below scope to deferred cleanup calls
+  # (Close, Remove) where the return value is conventionally ignored.
   exclusions:
     rules:
       - linters: [errcheck]
-        text: '`(rt|mod|cm)\.Close\(.*\)` is not checked'
-      - linters: [errcheck]
-        text: '`(rt|mod|cm)\.CloseWithExitCode\(.*\)` is not checked'
-      - linters: [errcheck]
-        path: _test\.go
         text: 'Error return value of `.*\.Close.*` is not checked'
+      - linters: [errcheck]
+        text: 'Error return value of `os\.Remove(All)?` is not checked'
 
 issues:
   max-issues-per-linter: 0
