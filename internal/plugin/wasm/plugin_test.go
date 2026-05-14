@@ -28,7 +28,7 @@ func TestWasm_InstallDetectCheck_Healthy(t *testing.T) {
 	}
 	defer rt.Close(ctx)
 
-	src := writeFixture(t, buildFixtureWasm(0 /*health*/, 1 /*protocol*/))
+	src := writeFixture(t, BuildFixtureWasm(0 /*health*/, 1 /*protocol*/))
 	project := t.TempDir()
 	m := manifest.Manifest{
 		Name: "codex-translator", Version: "0.1.0", Kind: manifest.KindWasm,
@@ -56,7 +56,7 @@ func TestWasm_ProtocolRejection(t *testing.T) {
 	}
 	defer rt.Close(ctx)
 	// Encode a fixture with protocol=99 — outside [1, 1] window.
-	src := writeFixture(t, buildFixtureWasm(0, 99))
+	src := writeFixture(t, BuildFixtureWasm(0, 99))
 	project := t.TempDir()
 	m := manifest.Manifest{
 		Name: "future", Version: "0.1.0", Kind: manifest.KindWasm,
@@ -76,7 +76,7 @@ func TestWasm_HealthFailure(t *testing.T) {
 	}
 	defer rt.Close(ctx)
 	// Encode a fixture with health=42 (non-zero = unhealthy), protocol=1.
-	src := writeFixture(t, buildFixtureWasm(42, 1))
+	src := writeFixture(t, BuildFixtureWasm(42, 1))
 	project := t.TempDir()
 	m := manifest.Manifest{
 		Name: "broken-health", Version: "0.1.0", Kind: manifest.KindWasm,
@@ -115,7 +115,7 @@ func TestHostState_Authorize(t *testing.T) {
 }
 
 func TestCacheKey_IsStable(t *testing.T) {
-	body := buildFixtureWasm(0, 1)
+	body := BuildFixtureWasm(0, 1)
 	k1 := CacheKey("p", "1.0.0", body)
 	k2 := CacheKey("p", "1.0.0", body)
 	if k1 != k2 {

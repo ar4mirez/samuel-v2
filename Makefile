@@ -20,7 +20,7 @@ BINARY_NAME := samuel
 BINARY_PATH := ./bin/$(BINARY_NAME)
 MAIN_PACKAGE := ./cmd/samuel
 
-.PHONY: all build build-all clean test test-coverage lint fmt deps install uninstall run version release release-dry help
+.PHONY: all build build-all clean test test-coverage lint fmt deps install uninstall run version release release-dry help wasm-fixtures wasm-bench
 
 all: deps lint test build
 
@@ -121,6 +121,18 @@ release:
 	else \
 		echo "goreleaser not installed."; \
 	fi
+
+## Rebuild the committed wasm e2e fixture binary
+wasm-fixtures:
+	@echo "Rebuilding testdata/wasm-fixture/plugin.wasm..."
+	$(GOCMD) run ./scripts/wasm-fixtures -out testdata/wasm-fixture/plugin.wasm
+	@echo "Rebuilt. Commit the new bytes if intentional."
+
+## Run wasm cold-start + warm-invoke benchmarks (PRD 0009 §Functional 3)
+wasm-bench:
+	@echo "Running wasm cold-start + warm benchmarks..."
+	$(GOTEST) -run=^$$ -bench=BenchmarkColdStart -bench=BenchmarkWarmInvoke \
+		-benchtime=10x -count=5 ./internal/plugin/wasm/
 
 ## Help
 help:

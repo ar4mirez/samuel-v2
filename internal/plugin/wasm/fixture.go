@@ -4,16 +4,16 @@ import (
 	"encoding/binary"
 )
 
-// buildFixtureWasm hand-encodes a minimal WebAssembly module that
+// BuildFixtureWasm hand-encodes a minimal WebAssembly module that
 // exports two i32-returning functions:
 //
 //	"health"                  -> i32  (returns healthVal)
 //	"samuel_protocol_version" -> i32  (returns protocolVal)
 //
-// Used by wasm tests to exercise the loader without an external
-// wat2wasm dependency. The encoding follows wasm core spec §5
-// (binary format).
-func buildFixtureWasm(healthVal, protocolVal int32) []byte {
+// Used by wasm tests and by `scripts/wasm-fixtures` to materialize the
+// committed binary fixture for the e2e suite (testdata/wasm-fixture/
+// plugin.wasm). The encoding follows wasm core spec §5 (binary format).
+func BuildFixtureWasm(healthVal, protocolVal int32) []byte {
 	var out []byte
 	// Magic + version.
 	out = append(out, 0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00)

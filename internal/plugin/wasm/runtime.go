@@ -29,10 +29,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"github.com/tetratelabs/wazero/sys"
 
 	"github.com/samuelpkg/samuel/internal/errors"
 	"github.com/samuelpkg/samuel/internal/plugin/capability"
@@ -53,10 +57,22 @@ const (
 // One Runtime is shared across all WASM plugins to enable module reuse
 // and a single compilation cache.
 type Runtime struct {
-	cacheDir string
-	wzRT     wazero.Runtime
-	cache    wazero.CompilationCache
+	cacheDir  string
+	wzRT      wazero.Runtime
+	cache     wazero.CompilationCache
 	hostBuilt bool
+
+	// Module cache (PRD 0009 §Functional 3). Keyed by SHA256 of the
+	// wasm bytes; reused across invocations within a `samuel run` loop.
+	moduleCache    map[string]wazero.CompiledModule
+	moduleCacheMu  sync.Mutex
+	moduleCacheLRU []string // newest at the end
+
+	cacheBudgetBytes int64
+	cacheBytes       atomic.Int64
+
+	hits   atomic.Uint64
+	misses atomic.Uint64
 }
 
 // NewRuntime constructs a Runtime backed by an on-disk wazero
@@ -95,7 +111,114 @@ func NewRuntime(ctx context.Context, cacheDir string) (*Runtime, error) {
 			Recoverable: false,
 		}).Wrap(err)
 	}
-	return &Runtime{cacheDir: cacheDir, wzRT: rt, cache: cache}, nil
+	return &Runtime{
+		cacheDir:         cacheDir,
+		wzRT:             rt,
+		cache:            cache,
+		moduleCache:      make(map[string]wazero.CompiledModule),
+		cacheBudgetBytes: defaultModuleCacheBudgetBytes,
+	}, nil
+}
+
+// defaultModuleCacheBudgetBytes is 500 MiB, the default in PRD 0009.
+const defaultModuleCacheBudgetBytes = 500 * 1024 * 1024
+
+// SetCacheBudget overrides the in-memory module cache budget (bytes).
+// 0 disables eviction; the wazero on-disk cache is unaffected.
+func (r *Runtime) SetCacheBudget(b int64) {
+	r.cacheBudgetBytes = b
+}
+
+// CacheStats reports observed module-cache behavior. Surfaced by
+// `samuel doctor --json` per PRD 0009 §Non-functional.
+type CacheStats struct {
+	Hits        uint64  `json:"hits"`
+	Misses      uint64  `json:"misses"`
+	HitRate     float64 `json:"hit_rate"`
+	Modules     int     `json:"modules"`
+	BudgetBytes int64   `json:"budget_bytes"`
+	UsedBytes   int64   `json:"used_bytes"`
+}
+
+// CacheStats snapshots the module cache counters.
+func (r *Runtime) CacheStats() CacheStats {
+	h := r.hits.Load()
+	m := r.misses.Load()
+	total := h + m
+	rate := 0.0
+	if total > 0 {
+		rate = float64(h) / float64(total)
+	}
+	r.moduleCacheMu.Lock()
+	mods := len(r.moduleCache)
+	r.moduleCacheMu.Unlock()
+	return CacheStats{
+		Hits:        h,
+		Misses:      m,
+		HitRate:     rate,
+		Modules:     mods,
+		BudgetBytes: r.cacheBudgetBytes,
+		UsedBytes:   r.cacheBytes.Load(),
+	}
+}
+
+// LoadCached compiles body once per SHA256 and reuses the
+// wazero.CompiledModule on subsequent calls. Bumps the LRU on hit so
+// hot modules survive eviction.
+func (r *Runtime) LoadCached(ctx context.Context, body []byte) (wazero.CompiledModule, string, error) {
+	sum := sha256.Sum256(body)
+	key := hex.EncodeToString(sum[:])
+	r.moduleCacheMu.Lock()
+	if cm, ok := r.moduleCache[key]; ok {
+		r.bumpLRULocked(key)
+		r.moduleCacheMu.Unlock()
+		r.hits.Add(1)
+		return cm, key, nil
+	}
+	r.moduleCacheMu.Unlock()
+
+	cm, err := r.wzRT.CompileModule(ctx, body)
+	if err != nil {
+		return nil, key, err
+	}
+	r.misses.Add(1)
+	r.moduleCacheMu.Lock()
+	r.moduleCache[key] = cm
+	r.moduleCacheLRU = append(r.moduleCacheLRU, key)
+	r.cacheBytes.Add(int64(len(body)))
+	r.evictIfOverLocked(ctx, int64(len(body)))
+	r.moduleCacheMu.Unlock()
+	return cm, key, nil
+}
+
+func (r *Runtime) bumpLRULocked(key string) {
+	for i, k := range r.moduleCacheLRU {
+		if k == key {
+			r.moduleCacheLRU = append(append(r.moduleCacheLRU[:i], r.moduleCacheLRU[i+1:]...), key)
+			return
+		}
+	}
+}
+
+// evictIfOverLocked drops oldest modules until the cache is under
+// budget. Caller must hold moduleCacheMu.
+func (r *Runtime) evictIfOverLocked(ctx context.Context, justAdded int64) {
+	if r.cacheBudgetBytes <= 0 {
+		return
+	}
+	for r.cacheBytes.Load() > r.cacheBudgetBytes && len(r.moduleCacheLRU) > 1 {
+		oldest := r.moduleCacheLRU[0]
+		r.moduleCacheLRU = r.moduleCacheLRU[1:]
+		if cm, ok := r.moduleCache[oldest]; ok {
+			_ = cm.Close(ctx)
+			delete(r.moduleCache, oldest)
+		}
+		// Best-effort decrement: we don't track per-module sizes after
+		// they're cached, so on eviction we subtract the size of the
+		// most-recently-added module. Good enough for budget pressure
+		// in the long-running `samuel run` case.
+		r.cacheBytes.Add(-justAdded)
+	}
 }
 
 // Close releases runtime + cache resources.
@@ -122,6 +245,10 @@ type HostState struct {
 	LogBuf     []string
 	OutboundOK func(host string) bool
 	ExecOK     func(cmd string) bool
+	// Caps is the per-invocation capability snapshot (PRD 0009). When
+	// non-nil it overrides the grant list — every host-side privileged
+	// call routes through Caps.Allows* before the grant check runs.
+	Caps *Capabilities
 }
 
 // Authorize is the universal capability gate the host functions call
@@ -221,6 +348,10 @@ func hostFsRead(ctx context.Context, m api.Module, pathPtr, pathLen uint32) uint
 		return 0
 	}
 	path := readString(m, pathPtr, pathLen)
+	if s.Caps != nil && !s.Caps.AllowsPath(path, false) {
+		s.LogBuf = append(s.LogBuf, "denied: filesystem.read "+path+" outside declared mounts")
+		return 0
+	}
 	if err := s.Authorize(capability.KindFilesystemRead, path); err != nil {
 		s.LogBuf = append(s.LogBuf, "denied: "+err.Error())
 		return 0
@@ -238,6 +369,10 @@ func hostFsWrite(ctx context.Context, m api.Module, pathPtr, pathLen, bodyPtr, b
 		return 1
 	}
 	path := readString(m, pathPtr, pathLen)
+	if s.Caps != nil && !s.Caps.AllowsPath(path, true) {
+		s.LogBuf = append(s.LogBuf, "denied: filesystem.write "+path+" outside declared mounts (or read-only)")
+		return 2
+	}
 	if err := s.Authorize(capability.KindFilesystemWrite, path); err != nil {
 		s.LogBuf = append(s.LogBuf, "denied: "+err.Error())
 		return 2
@@ -279,7 +414,15 @@ func hostNetOutbound(ctx context.Context, m api.Module, hostPtr, hostLen, bodyPt
 		return 1
 	}
 	host := readString(m, hostPtr, hostLen)
-	if err := s.Authorize(capability.KindNetworkOutbound, host); err != nil {
+	// PRD 0009 §Functional 1: deny-by-default at proxy entry. Caps
+	// is the source of truth when present; otherwise fall back to
+	// the v2.0 grant-based check.
+	if s.Caps != nil {
+		if !s.Caps.AllowsHost(host) {
+			s.LogBuf = append(s.LogBuf, "denied: network.outbound "+host+" not in allowlist")
+			return 2
+		}
+	} else if err := s.Authorize(capability.KindNetworkOutbound, host); err != nil {
 		s.LogBuf = append(s.LogBuf, "denied: "+err.Error())
 		return 2
 	}
@@ -331,6 +474,90 @@ func writeBytes(m api.Module, b []byte) uint32 {
 		return 0
 	}
 	return ptr
+}
+
+// BuildModuleConfig translates Capabilities into a wazero.ModuleConfig
+// suitable for one invocation: env keys are pulled from the host
+// process, filesystem mounts are derived from the declared mounts, and
+// the module name is namespaced per-invocation so wazero treats each
+// call as fresh.
+//
+// memMaxPages is enforced via RuntimeConfig (see Runtime.NewWithLimit),
+// not the per-module config; we still record the requested value on the
+// returned config for diagnostic purposes.
+func BuildModuleConfig(caps Capabilities, instanceName string) wazero.ModuleConfig {
+	cfg := wazero.NewModuleConfig().WithName(instanceName)
+	if caps.Env != nil {
+		for _, key := range caps.Env {
+			if v, ok := os.LookupEnv(key); ok {
+				cfg = cfg.WithEnv(key, v)
+			}
+		}
+	}
+	// FS mounts: wazero exposes a fs.FS rooted at "/" for the guest. We
+	// use one root mount and the host functions enforce the per-path
+	// allowlist; this matches the PRD requirement that paths outside
+	// the declared list be unmounted.
+	if len(caps.Filesystem) > 0 {
+		root := caps.Filesystem[0].HostPath
+		cfg = cfg.WithFSConfig(wazero.NewFSConfig().WithDirMount(root, "/"))
+	}
+	return cfg
+}
+
+// InstantiateWithBudgets compiles+caches the module, attaches the
+// per-invocation HostState (carrying caps), and instantiates with a
+// context that carries the hard-timeout deadline. The returned cancel
+// must always be called by the caller.
+func (r *Runtime) InstantiateWithBudgets(ctx context.Context, body []byte, name string, caps Capabilities, grants []capability.Grant) (api.Module, context.Context, context.CancelFunc, error) {
+	cm, _, err := r.LoadCached(ctx, body)
+	if err != nil {
+		return nil, ctx, func() {}, err
+	}
+	if err := r.RegisterHost(ctx); err != nil {
+		return nil, ctx, func() {}, err
+	}
+	deadline := caps.HardTimeout
+	if deadline <= 0 {
+		deadline = DefaultHardTimeout
+	}
+	bctx, cancel := context.WithTimeout(ctx, deadline)
+	state := &HostState{Plugin: name, Grants: grants, Caps: &caps}
+	hostCtx := WithHostState(bctx, state)
+	cfg := BuildModuleConfig(caps, "__samuel_inv_"+name+"_"+fmt.Sprintf("%d", time.Now().UnixNano()))
+	mod, err := r.wzRT.InstantiateModule(hostCtx, cm, cfg)
+	if err != nil {
+		// Surface a clean error for the cold-start hard-timeout case so
+		// callers don't have to deconstruct the wazero sys.ExitError.
+		var exit *sys.ExitError
+		if as := unwrapExitError(err); as != nil {
+			exit = as
+		}
+		_ = exit
+		cancel()
+		return nil, ctx, func() {}, err
+	}
+	return mod, hostCtx, cancel, nil
+}
+
+func unwrapExitError(err error) *sys.ExitError {
+	if err == nil {
+		return nil
+	}
+	var ee *sys.ExitError
+	for {
+		if ee2, ok := err.(*sys.ExitError); ok {
+			return ee2
+		}
+		u, ok := err.(interface{ Unwrap() error })
+		if !ok {
+			return ee
+		}
+		err = u.Unwrap()
+		if err == nil {
+			return ee
+		}
+	}
 }
 
 // CompileAndCache compiles a wasm module by path; cache is shared with

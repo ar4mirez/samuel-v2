@@ -7,6 +7,113 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v2.2.0] — WASM plugin tier first-class (capability gates + reference plugin)
+
+v2.0 scaffolded `internal/plugin/wasm/` but the tier had no capability
+enforcement, no cold-start budget, no reference plugin, and no
+`samuel new plugin --kind=wasm` scaffolding. v2.2 lands all four and
+makes WASM a first-class authoring path alongside skills.
+
+Design rationale: [RFD 0010](docs/rfd/0010.md). Tracking PRD:
+[`.samuel/tasks/0009-prd-wasm-plugin-tier.md`](.samuel/tasks/0009-prd-wasm-plugin-tier.md).
+
+### Added
+
+- **`Capabilities` type** at
+  [`internal/plugin/wasm/capabilities.go`](internal/plugin/wasm/capabilities.go).
+  Per-instance gate set: filesystem mounts (with read-only flag), env
+  key allowlist, network host allowlist, memory ceiling, soft + hard
+  timeout. Derived from the manifest via `CapabilitiesFromManifest`.
+- **Module cache** in `Runtime.LoadCached` with SHA256 keying, LRU
+  eviction at the `[wasm].cache_budget` (default 500 MiB), and stats
+  surfaced via `Runtime.CacheStats` (hits / misses / hit rate / used
+  bytes). Cache hit rate is exposed in `samuel doctor --json` under
+  `wasm_cache_stats`.
+- **`Runtime.InstantiateWithBudgets`** binds the per-invocation
+  Capabilities + grants to a `HostState` and instantiates the module
+  with a `context.WithTimeout` deadline. Filesystem / env / network
+  host calls route through `Caps.Allows*` before any privileged
+  work runs.
+- **Manifest schema v2.2** at
+  [`internal/plugin/manifest/schema/plugin.v2.2.json`](internal/plugin/manifest/schema/plugin.v2.2.json).
+  Adds `[runtime]` (`max_memory`, `timeout`, `hard_timeout`,
+  `exports`), `[capabilities.network].hosts`, and
+  `[capabilities].env`.
+- **Manifest validator additions** for the wasm tier: required
+  exports list, reserved-export rejection (`init`, `install`, …),
+  required `[wasm].module` field.
+- **`samuel new plugin --kind=wasm`** at
+  [`internal/commands/new.go`](internal/commands/new.go). Scaffolds
+  a buildable TinyGo plugin tree with manifest, `cmd/main.go`,
+  Makefile, README, `.gitignore`, and a cosign-signing release
+  workflow. `--kind=skill` is also supported; `--kind=oci` defers to
+  PRD 0010 (v2.3.0).
+- **Cold-start benchmarks** at
+  [`internal/plugin/wasm/runtime_bench_test.go`](internal/plugin/wasm/runtime_bench_test.go):
+  `BenchmarkColdStart_TinyGoMinimal`,
+  `BenchmarkColdStart_TinyGoReference`, `BenchmarkWarmInvoke`.
+  Local reference-laptop median is ~0.65 ms cold; the CI gate fails
+  any PR that regresses past 150 ms median (3x reference-laptop
+  budget) over 10 runs.
+- **`.github/workflows/wasm-perf.yml`** — PR gate watching the
+  cold-start budget on every change to
+  `internal/plugin/wasm/**`.
+- **Hermetic e2e** at
+  [`e2e/hermetic/wasm_test.go`](e2e/hermetic/wasm_test.go):
+  `TestWASM_InstallsLocally`, `TestWASM_InvokeExport`,
+  `TestWASM_CapabilityDeny_FilesystemEscape`. Backed by a committed
+  binary fixture at `testdata/wasm-fixture/plugin.wasm` (rebuild via
+  `make wasm-fixtures`).
+- **Live e2e** at
+  [`e2e/live/wasm_live_test.go`](e2e/live/wasm_live_test.go):
+  `TestWASM_Live_InstallReference`, `TestWASM_Live_InvokeReference`.
+  Skips by default; set `SAMUEL_LIVE_WASM_PLUGIN=1` once the
+  reference plugin lands in the public registry.
+- **Reference plugin source** at
+  [`examples/samuel-go-guide-wasm/`](examples/samuel-go-guide-wasm/).
+  TinyGo port of the existing `samuel-go-guide` skill with a shared
+  `internal/rules/` package (same lint rules in skill + wasm),
+  capability-locked manifest, release workflow targeting cosign
+  keyless OIDC. The directory splits out to its own repo before the
+  stable v2.2.0 tag.
+- **`docs/plugin-authors/wasm.md`** — full author walkthrough: when
+  to choose WASM, toolchain, manifest reference, capability model,
+  cold-start budget, debugging, restrictions, release flow.
+- **RFD 0010** at [`docs/rfd/0010.md`](docs/rfd/0010.md). Documents
+  why TinyGo first, why wazero, why WASI Preview 1 over the
+  Component Model, and the cold-start + cache budget decisions.
+- **Makefile targets**: `make wasm-fixtures` rebuilds the committed
+  e2e fixture binary; `make wasm-bench` runs the cold + warm
+  benchmarks locally.
+
+### Changed
+
+- **`samuel doctor`** surfaces wasm plugin health: module loads,
+  declared exports present, `[wasm].exports` vs `[runtime].exports`
+  drift detection. Same `--fix` pattern as PRD 0006 / rc.14.
+- **`internal/plugin/wasm/fixture.go`** (was `fixture_test.go`)
+  exposes `BuildFixtureWasm` as a public helper so the
+  fixture-generation script and the framework benchmarks can share
+  one encoder.
+
+### Migration
+
+No breaking changes for v2.0 / v2.1 plugins:
+
+- `[wasm].exports` is still honored; `[runtime].exports` is
+  optional. When both are set they must match.
+- `[capabilities.network].outbound` (the v2.0 field) is still
+  respected by the skill + oci tiers; the wasm tier reads
+  `[capabilities.network].hosts` instead.
+- The lockfile format is unchanged.
+
+### Performance
+
+- `BenchmarkColdStart_TinyGoMinimal` median ≤ 50 ms (reference
+  laptop). CI runners allowed 3x = 150 ms.
+- Module cache hit rate target ≥ 95% in long `samuel run` loops.
+- Reference plugin (`samuel-go-guide-wasm`) binary size ≤ 2 MB.
+
 ## [v2.1.0] — Real Sigstore verifier (math swap; `IsProduction()` flips)
 
 v2.0 shipped a policy-only `StubVerifier`: `[security]` enforcement

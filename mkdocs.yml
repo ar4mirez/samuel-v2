@@ -144,6 +144,7 @@ nav:
       - Hooks: plugin-authors/hooks.md
       - Capabilities: plugin-authors/capabilities.md
       - TinyGo + WASM: plugin-authors/tinygo-wasm.md
+      - WASM plugins (v2.2): plugin-authors/wasm.md
       - OCI + gRPC: plugin-authors/oci-grpc.md
       - Signing: plugin-authors/signing.md
   - RFDs:
@@ -157,6 +158,7 @@ nav:
       - "0007: Plugin migration from v1 skills": rfd/0007.md
       - "0008: Drop gstack and gbrain from the v2 framework": rfd/0008.md
       - "0009: Plugin signing via Sigstore enforcement (v2.1)": rfd/0009.md
+      - "0010: WASM plugin tier — wazero + TinyGo + capability gates": rfd/0010.md
   - Plugins:
       - Index: plugins/index.md
   - Reference:

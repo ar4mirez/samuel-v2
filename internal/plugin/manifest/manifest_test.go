@@ -53,7 +53,13 @@ kind = "wasm"
 
 [wasm]
 module = "plugin.wasm"
-exports = ["init", "run", "health"]
+exports = ["translate", "lint", "health"]
+
+[runtime]
+max_memory = 64
+timeout = "5s"
+hard_timeout = "30s"
+exports = ["translate", "lint"]
 `)
 	m, err := Parse(body, "wasm.toml")
 	if err != nil {
@@ -61,6 +67,55 @@ exports = ["init", "run", "health"]
 	}
 	if m.Wasm == nil || m.Wasm.Module != "plugin.wasm" {
 		t.Errorf("wasm block not parsed: %+v", m.Wasm)
+	}
+	if m.Runtime == nil || m.Runtime.MaxMemoryMiB != 64 {
+		t.Errorf("runtime block not parsed: %+v", m.Runtime)
+	}
+}
+
+func TestParse_Wasm_RejectsReservedExport(t *testing.T) {
+	body := []byte(`
+name = "shadow"
+version = "0.1.0"
+kind = "wasm"
+
+[wasm]
+module = "plugin.wasm"
+exports = ["init"]
+`)
+	_, err := Parse(body, "shadow.toml")
+	if err == nil || !strings.Contains(err.Error(), "collides with built-in") {
+		t.Fatalf("expected reserved-export rejection, got %v", err)
+	}
+}
+
+func TestParse_Wasm_RequiresExports(t *testing.T) {
+	body := []byte(`
+name = "noexports"
+version = "0.1.0"
+kind = "wasm"
+
+[wasm]
+module = "plugin.wasm"
+`)
+	_, err := Parse(body, "noexports.toml")
+	if err == nil || !strings.Contains(err.Error(), "no exports") {
+		t.Fatalf("expected missing-exports rejection, got %v", err)
+	}
+}
+
+func TestParse_Wasm_RequiresModule(t *testing.T) {
+	body := []byte(`
+name = "nomod"
+version = "0.1.0"
+kind = "wasm"
+
+[runtime]
+exports = ["lint"]
+`)
+	_, err := Parse(body, "nomod.toml")
+	if err == nil || !strings.Contains(err.Error(), "module reference") {
+		t.Fatalf("expected missing-module rejection, got %v", err)
 	}
 }
 

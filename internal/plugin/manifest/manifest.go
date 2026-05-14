@@ -69,6 +69,10 @@ type Manifest struct {
 	Wasm *WasmBlock `toml:"wasm,omitempty"`
 	OCI  *OCIBlock  `toml:"oci,omitempty"`
 
+	// Runtime carries wasm-tier memory + timeout budgets (PRD 0009).
+	// Skill and OCI tiers ignore the block.
+	Runtime *RuntimeBlock `toml:"runtime,omitempty"`
+
 	// Summary, Homepage, License, Authors mirror the RFD 0003 manifest
 	// schema. They are optional and surface through `samuel info`.
 	Summary  string   `toml:"summary,omitempty"`
@@ -102,6 +106,9 @@ type CapabilitiesBlock struct {
 	Filesystem FilesystemCaps `toml:"filesystem,omitempty"`
 	Exec       bool           `toml:"exec,omitempty"`
 	Network    NetworkCaps    `toml:"network,omitempty"`
+	// Env is the per-process env-key allowlist enforced by the wasm
+	// runtime (PRD 0009 §Functional 1). Empty list = no env.
+	Env []string `toml:"env,omitempty"`
 	// Samuel namespace covers framework-internal capabilities
 	// (samuel.api access, assistant.invoke, etc.).
 	Samuel    SamuelCaps    `toml:"samuel,omitempty"`
@@ -117,9 +124,26 @@ type FilesystemCaps struct {
 	Write []string `toml:"write,omitempty"`
 }
 
-// NetworkCaps lists outbound destination allowlists.
+// NetworkCaps lists outbound destination allowlists. `outbound` is the
+// legacy v2.0 field used by skill + oci tiers; `hosts` is the wasm-tier
+// allowlist enforced by the wasiNetwork proxy (PRD 0009).
 type NetworkCaps struct {
 	Outbound []string `toml:"outbound,omitempty"`
+	Hosts    []string `toml:"hosts,omitempty"`
+}
+
+// RuntimeBlock carries wasm-tier per-instance budgets (PRD 0009).
+//
+//	[runtime]
+//	  max_memory  = 64        # MiB; wazero memory cap
+//	  timeout     = "5s"      # soft deadline (returned to plugin)
+//	  hard_timeout = "30s"    # absolute kill via ctx.Cancel
+//	  exports     = ["lint"]  # functions installer is allowed to call
+type RuntimeBlock struct {
+	MaxMemoryMiB uint32   `toml:"max_memory,omitempty"`
+	Timeout      string   `toml:"timeout,omitempty"`
+	HardTimeout  string   `toml:"hard_timeout,omitempty"`
+	Exports      []string `toml:"exports,omitempty"`
 }
 
 // SamuelCaps gates access to framework-internal RPC surfaces.
@@ -261,6 +285,35 @@ func (m *Manifest) Validate() error {
 				Recoverable: true,
 			}
 		}
+		// PRD 0009 §Functional 2: validate the [runtime] block when
+		// present, and require at least one declared export. We accept
+		// exports either in [wasm].exports (the v2.0 location) or
+		// [runtime].exports (the v2.2 location) — but at least one of
+		// the two must be non-empty.
+		exports := m.Wasm.Exports
+		if m.Runtime != nil && len(m.Runtime.Exports) > 0 {
+			exports = m.Runtime.Exports
+		}
+		if len(exports) == 0 {
+			return &errors.Error{
+				Component:   Component,
+				Problem:     "wasm manifest declares no exports",
+				Fix:         "add `[runtime]\\nexports = [\"<fn>\"]` or `[wasm]\\nexports = [\"<fn>\"]`",
+				DocsURL:     "https://samuelpkg.github.io/samuel/docs/errors/SAM-MANIFEST-001",
+				Recoverable: true,
+			}
+		}
+		for _, e := range exports {
+			if IsReservedExport(e) {
+				return &errors.Error{
+					Component:   Component,
+					Problem:     fmt.Sprintf("export %q collides with built-in samuel verb", e),
+					Fix:         "rename the wasm export so it does not shadow a samuel command",
+					DocsURL:     "https://samuelpkg.github.io/samuel/docs/errors/SAM-MANIFEST-001",
+					Recoverable: true,
+				}
+			}
+		}
 	}
 	if m.Kind == KindOci {
 		if m.OCI == nil || strings.TrimSpace(m.OCI.Image) == "" {
@@ -315,6 +368,33 @@ func ValidName(s string) bool {
 		}
 	}
 	return true
+}
+
+// reservedExports lists wasm export names that collide with the
+// framework's own command verbs. The wasm tier rejects any plugin that
+// tries to register one of these.
+var reservedExports = map[string]struct{}{
+	"init":      {},
+	"install":   {},
+	"uninstall": {},
+	"update":    {},
+	"search":    {},
+	"info":      {},
+	"ls":        {},
+	"list":      {},
+	"run":       {},
+	"doctor":    {},
+	"sync":      {},
+	"version":   {},
+	"new":       {},
+}
+
+// IsReservedExport reports whether name shadows a built-in samuel verb.
+// Comparison is case-sensitive: wasm exports are lowercase by convention
+// and the built-in command names are lowercase verbs.
+func IsReservedExport(name string) bool {
+	_, ok := reservedExports[strings.ToLower(strings.TrimSpace(name))]
+	return ok
 }
 
 // ValidVersionRange is a thin syntactic check. The full parse lives in

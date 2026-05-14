@@ -1,0 +1,59 @@
+name: wasm-perf
+
+on:
+  pull_request:
+    paths:
+      - "internal/plugin/wasm/**"
+      - "internal/plugin/manifest/**"
+      - ".github/workflows/wasm-perf.yml"
+      - "go.mod"
+      - "go.sum"
+  push:
+    branches: [main]
+    paths:
+      - "internal/plugin/wasm/**"
+
+# PRD 0009 §Functional 3 cold-start gate.
+#
+# Budget: BenchmarkColdStart_TinyGoMinimal median ≤ 50ms on reference
+# laptop. CI runners are allowed 3x → 150ms upper bound. The check
+# parses `go test -bench` output and fails the job on regression.
+jobs:
+  cold-start:
+    name: cold-start ≤ 150ms (3x reference-laptop budget)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run cold-start benchmarks (10 runs, median)
+        id: bench
+        run: |
+          set -euxo pipefail
+          go test -run=^$ \
+            -bench=BenchmarkColdStart_TinyGoMinimal \
+            -benchtime=10x \
+            -count=10 \
+            ./internal/plugin/wasm/ | tee bench.txt
+      - name: Gate median ≤ 150ms
+        run: |
+          set -euo pipefail
+          # Extract ns/op column (3rd) from every BenchmarkColdStart_TinyGoMinimal
+          # line, sort numerically, take the median.
+          times_ns=$(grep '^BenchmarkColdStart_TinyGoMinimal' bench.txt \
+            | awk '{print $3}' | sort -n)
+          count=$(echo "$times_ns" | wc -l | tr -d ' ')
+          if [ "$count" -lt 1 ]; then
+            echo "No benchmark output captured"; exit 1
+          fi
+          mid=$(( (count + 1) / 2 ))
+          median_ns=$(echo "$times_ns" | sed -n "${mid}p")
+          # 150ms in ns:
+          budget_ns=150000000
+          echo "cold-start median: ${median_ns} ns (budget ${budget_ns} ns / 150ms)"
+          if [ "$median_ns" -gt "$budget_ns" ]; then
+            echo "::error::cold-start regression: ${median_ns} ns > ${budget_ns} ns"
+            exit 1
+          fi

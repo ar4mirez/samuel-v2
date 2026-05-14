@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://samuelpkg.github.io/samuel/schema/plugin.v2.2.json",
+  "title": "Samuel plugin manifest (v2.2)",
+  "description": "Adds [runtime] block and [capabilities.network.hosts] / [capabilities.env] arrays for the wasm tier (PRD 0009).",
+  "type": "object",
+  "required": ["name", "version", "kind"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$",
+      "description": "Plugin name. Lowercase alphanumerics + dash, 2-64 chars."
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver version (X.Y.Z)."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["skill", "wasm", "oci", "meta"]
+    },
+    "summary": { "type": "string" },
+    "homepage": { "type": "string", "format": "uri" },
+    "license": { "type": "string" },
+    "authors": { "type": "array", "items": { "type": "string" } },
+    "samuel": {
+      "type": "object",
+      "properties": {
+        "framework": { "type": "string" },
+        "protocol": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "provides": {
+      "type": "object",
+      "properties": {
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "methodology": { "type": "array", "items": { "type": "string" } },
+        "hooks": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "requires": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "filesystem": {
+          "type": "object",
+          "properties": {
+            "read": { "type": "array", "items": { "type": "string" } },
+            "write": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "exec": { "type": "boolean" },
+        "network": {
+          "type": "object",
+          "properties": {
+            "outbound": { "type": "array", "items": { "type": "string" } },
+            "hosts": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "wasm-tier deny-by-default host allowlist (PRD 0009)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "env": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "wasm-tier env-key allowlist. Empty = no env passed to guest."
+        },
+        "samuel": {
+          "type": "object",
+          "properties": { "api": { "type": "boolean" } },
+          "additionalProperties": false
+        },
+        "assistant": {
+          "type": "object",
+          "properties": { "invoke": { "type": "boolean" } },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "wasm": {
+      "type": "object",
+      "required": ["module"],
+      "properties": {
+        "module": { "type": "string" },
+        "exports": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "oci": {
+      "type": "object",
+      "required": ["image"],
+      "properties": {
+        "image": { "type": "string" },
+        "digest": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "description": "wasm-tier per-instance budgets (PRD 0009).",
+      "properties": {
+        "max_memory": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "MiB; wazero memory cap. Default 64."
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Go duration string. Soft deadline (default 5s)."
+        },
+        "hard_timeout": {
+          "type": "string",
+          "description": "Go duration string. Absolute kill (default 30s)."
+        },
+        "exports": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Exported function names the host is allowed to invoke."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "wasm" } } },
+      "then": { "required": ["wasm"] }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "oci" } } },
+      "then": { "required": ["oci"] }
+    }
+  ]
+}

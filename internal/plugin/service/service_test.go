@@ -192,11 +192,11 @@ func TestService_InstallWasm_HealthOK(t *testing.T) {
 	ctx := context.Background()
 	src := t.TempDir()
 	// Hand-encode a minimal wasm with health=0, protocol=1.
-	body := buildFixtureWasm(0, 1)
+	body := BuildFixtureWasm(0, 1)
 	if err := os.WriteFile(filepath.Join(src, "plugin.wasm"), body, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	tomlBody := "name = \"codex-translator\"\nversion = \"0.1.0\"\nkind = \"wasm\"\n\n[wasm]\nmodule = \"plugin.wasm\"\n"
+	tomlBody := "name = \"codex-translator\"\nversion = \"0.1.0\"\nkind = \"wasm\"\n\n[wasm]\nmodule = \"plugin.wasm\"\nexports = [\"health\"]\n"
 	if err := os.WriteFile(filepath.Join(src, manifest.FileName), []byte(tomlBody), 0o644); err != nil {
 		t.Fatal(err)
 	}

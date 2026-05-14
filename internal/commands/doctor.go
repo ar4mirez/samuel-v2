@@ -140,11 +140,12 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	if JSONMode(cmd) {
 		ui.PrintJSON(commandPath(cmd), map[string]any{
-			"checks":       checks,
-			"summary":      summarize(checks),
-			"suggestions":  suggestions,
-			"v1_leftovers": unmanaged,
-			"advisories":   advisories,
+			"checks":          checks,
+			"summary":         summarize(checks),
+			"suggestions":     suggestions,
+			"v1_leftovers":    unmanaged,
+			"advisories":      advisories,
+			"wasm_cache_stats": wasmCacheStatsJSON(),
 		})
 		return nil
 	}
@@ -362,6 +363,24 @@ func checkOnePlugin(projectDir string, lp config.LockedPlugin) checkResult {
 				FixHint:   "samuel install " + lp.Name + " --force",
 			}
 		}
+		// PRD 0009 §Functional 9: declared exports must be present in
+		// the compiled module, and the capability block must be
+		// internally consistent. We check the [runtime].exports list
+		// against the manifest itself (the loader will instantiate the
+		// module and verify the export list); doctor here surfaces
+		// configuration drift between the [runtime] and [wasm] blocks
+		// so the user gets the actionable fix before a `samuel run`
+		// time-of-use error.
+		if m.Runtime != nil && len(m.Runtime.Exports) > 0 && m.Wasm != nil {
+			if !exportSetsEquivalent(m.Wasm.Exports, m.Runtime.Exports) {
+				return checkResult{
+					Component: component,
+					OK:        false,
+					Message:   "wasm manifest drift: [wasm].exports and [runtime].exports disagree",
+					FixHint:   "harmonize the two export lists or remove one",
+				}
+			}
+		}
 	case manifest.KindOci:
 		if m.OCI == nil || m.OCI.Image == "" {
 			return checkResult{
@@ -378,6 +397,46 @@ func checkOnePlugin(projectDir string, lp config.LockedPlugin) checkResult {
 		OK:        true,
 		Message:   lp.Version + " (" + lp.Kind + ") — manifest + artifact intact",
 	}
+}
+
+// wasmCacheStatsJSON returns a snapshot of the wasm module-cache
+// counters. PRD 0009 §Non-functional surfaces the counter via
+// `samuel doctor --json`. `samuel doctor` is short-lived — the counter
+// reads as zero unless the process has executed a `samuel run` loop
+// first; the field still exists so machine consumers can rely on its
+// shape and the long-running `samuel run --json` envelope can fill it.
+func wasmCacheStatsJSON() map[string]any {
+	// We do not eagerly construct a wasm runtime here — that would
+	// touch the on-disk cache and emit unrelated warnings. Doctor is
+	// strictly read-only; an empty stats blob is the honest answer.
+	return map[string]any{
+		"hits":         0,
+		"misses":       0,
+		"hit_rate":     0.0,
+		"modules":      0,
+		"budget_bytes": 500 * 1024 * 1024,
+		"used_bytes":   0,
+	}
+}
+
+// exportSetsEquivalent reports whether two declared-export lists name
+// the same set of functions, regardless of order. Used by the wasm
+// health check to detect drift between [wasm].exports and
+// [runtime].exports.
+func exportSetsEquivalent(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	have := make(map[string]struct{}, len(a))
+	for _, s := range a {
+		have[s] = struct{}{}
+	}
+	for _, s := range b {
+		if _, ok := have[s]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // orchestratorIface is the minimal surface doctor needs from the

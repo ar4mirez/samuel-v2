@@ -1,10 +1,10 @@
 package service
 
-// buildFixtureWasm + helpers mirror internal/plugin/wasm/fixture_test.go.
+// BuildFixtureWasm + helpers mirror internal/plugin/wasm/fixture_test.go.
 // Duplicated here so the integration test can build wasm fixtures
 // without exposing the encoder publicly.
 
-func buildFixtureWasm(healthVal, protocolVal int32) []byte {
+func BuildFixtureWasm(healthVal, protocolVal int32) []byte {
 	out := []byte{0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00}
 	out = appendSection(out, 0x01, []byte{0x01, 0x60, 0x00, 0x01, 0x7f})
 	out = appendSection(out, 0x03, []byte{0x02, 0x00, 0x00})

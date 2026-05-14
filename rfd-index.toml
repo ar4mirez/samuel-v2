@@ -7,7 +7,7 @@
 #   Discussion / Published / Committed / Abandoned: docs/rfd/ (public)
 
 schema_version = 1
-next_number = 10
+next_number = 11
 
 [[rfds]]
 number = "0001"
@@ -116,3 +116,15 @@ updated = "2026-05-14"
 path = "docs/rfd/0009.md"
 discussion = ""
 related_prd = "0008-prd-sigstore-verifier.md"
+
+[[rfds]]
+number = "0010"
+title = "WASM plugin tier — wazero + TinyGo + capability gates"
+state = "Published"
+authors = ["ar4mirez"]
+labels = ["v2", "v2.2", "plugins", "wasm", "wazero", "tinygo", "capabilities"]
+created = "2026-05-14"
+updated = "2026-05-14"
+path = "docs/rfd/0010.md"
+discussion = ""
+related_prd = "0009-prd-wasm-plugin-tier.md"
