@@ -89,6 +89,15 @@ func newProject(t *testing.T) *project {
 // error from the process. SAMUEL_VERIFY_ALLOW_UNSIGNED=1 is always set
 // so the unsigned-fixtures contract is consistent across tests.
 func (p *project) samuel(args ...string) (string, error) {
+	return p.samuelWithEnv(nil, args...)
+}
+
+// samuelWithEnv is the variant used by the verify-live tests: callers
+// can append extra env vars (last-write-wins, matching exec.Cmd) to
+// override the default SAMUEL_VERIFY_ALLOW_UNSIGNED=1 baseline. The
+// production sigstore verifier tier sets SAMUEL_VERIFY_ALLOW_UNSIGNED=0
+// to force the cryptographic path on signed fixtures.
+func (p *project) samuelWithEnv(extraEnv []string, args ...string) (string, error) {
 	p.t.Helper()
 	cmd := exec.Command(samuelBin, args...)
 	cmd.Dir = p.dir
@@ -97,6 +106,7 @@ func (p *project) samuel(args ...string) (string, error) {
 		"XDG_CACHE_HOME="+filepath.Join(p.home, ".cache"),
 		"SAMUEL_VERIFY_ALLOW_UNSIGNED=1",
 	)
+	cmd.Env = append(cmd.Env, extraEnv...)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }

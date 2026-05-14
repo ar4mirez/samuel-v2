@@ -74,6 +74,8 @@ Investigation of Issue #2 surfaced that the production verifier is `StubVerifier
 
 **Lesson**: when a planned feature ships unfinished, surface it where users naturally check (`samuel doctor`), not just in code comments. The half-honest output ("verified" without qualifier) was the actively-misleading state; the surfaced advisory is the honest state.
 
+**v2.1 follow-through** ([RFD 0009](../../docs/rfd/0009.md)): the math swap lands in **v2.1.0**. `verify.Default()` returns `*SigstoreVerifier`, `verify.IsProduction()` flips to `true`, and the doctor advisory now reads `signature verifier: sigstore-go (production)`. The `SAMUEL_VERIFY_STUB=1` env var is the documented opt-out for air-gapped CI; when active, the stub-mode banner surfaces on every install (not just doctor), preserving the "honest at the surface where the user looks" lesson.
+
 #v2-decision
 
 ## Structural changes that close the recurrence gap

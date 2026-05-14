@@ -27,13 +27,18 @@ below).
 samuel-test-registry/
 ├── README.md                   # this file
 ├── index.toml                  # registry index; points at fixture plugin repos
+├── .github/workflows/
+│   └── sign-fixtures.yml       # PRD 0008: keyless cosign sign-blob on tag push
 └── fixtures/                   # one directory per fixture plugin
-    ├── samuel-test-skill-basic/        # minimal SKILL.md fixture
-    ├── samuel-test-skill-tagged-v/     # release tagged v1.0.0 (rc.6 fixture)
-    ├── samuel-test-skill-tagged-bare/  # release tagged 1.0.0 (rc.6 fallback)
-    ├── samuel-test-skill-with-git/     # `.git/` left after clone (rc.9 fixture)
+    ├── samuel-test-skill-basic/             # minimal SKILL.md fixture
+    ├── samuel-test-skill-tagged-v/          # release tagged v1.0.0 (rc.6 fixture)
+    ├── samuel-test-skill-tagged-bare/       # release tagged 1.0.0 (rc.6 fallback)
+    ├── samuel-test-skill-with-git/          # `.git/` left after clone (rc.9 fixture)
     ├── samuel-test-skill-updatable-v1.0.0/  # snapshot at 1.0.0
-    └── samuel-test-skill-updatable-v1.1.0/  # snapshot at 1.1.0
+    ├── samuel-test-skill-updatable-v1.1.0/  # snapshot at 1.1.0
+    ├── samuel-test-skill-signed/            # PRD 0008: signed against samuel-test-registry/* identity
+    ├── samuel-test-skill-unsigned/          # PRD 0008: no bundle — verify fails closed
+    └── samuel-test-skill-wrong-identity/    # PRD 0008: real signature, identity outside allowlist
 ```
 
 Each fixture directory contains a `samuel-plugin.toml` + `SKILL.md` + (in
@@ -49,6 +54,41 @@ is ≤10 KB so clone time is negligible.
 | `samuel-test-skill-tagged-bare` | `1.0.0` | rc.6 fallback: registry says `1.0.0`, repo tags `1.0.0` |
 | `samuel-test-skill-with-git` | `v1.0.0` | rc.9: ensure `.git/` is stripped on install |
 | `samuel-test-skill-updatable` | `v1.0.0`, `v1.1.0` | update path: 1.0.0 → 1.1.0 |
+| `samuel-test-skill-signed` | `v1.0.0` | PRD 0008: cosign-signed SKILL.md.bundle, OIDC subject matches `identity_patterns` |
+| `samuel-test-skill-unsigned` | `v1.0.0` | PRD 0008: no signature_bundle published — install fails without `--allow-unsigned` |
+| `samuel-test-skill-wrong-identity` | `v1.0.0` | PRD 0008: real bundle, OIDC subject outside `identity_patterns` — verify rejects |
+
+## v2.1 expectation: signature_bundle
+
+For v2.1+ the production sigstore verifier requires every signed plugin
+to publish a `signature_bundle` URL in `index.toml`. The field is a
+sibling JSON file produced by `cosign sign-blob --bundle`. Fixtures
+that intentionally omit the field (the `samuel-test-skill-unsigned`
+row above) test the fail-closed path.
+
+A reusable GitHub Actions workflow ([`.github/workflows/sign-fixtures.yml`](.github/workflows/sign-fixtures.yml))
+runs on each fixture-repo tag push and uses keyless cosign + OIDC
+(no long-lived signing keys) to attach the `.bundle` as a release
+asset.
+
+## Manual signature verification (sanity-check)
+
+After a fresh publish, verify each signed fixture's signature locally
+with stock `cosign`:
+
+```bash
+# Pull the SKILL.md + .bundle from the release.
+gh release download v1.0.0 -R samuelpkg/samuel-test-skill-signed \
+    -p SKILL.md -p SKILL.md.bundle -D /tmp/sig-check
+
+# Verify the bundle (keyless — OIDC identity matched against the
+# samuel-test-registry/* pattern).
+cosign verify-blob \
+    --bundle /tmp/sig-check/SKILL.md.bundle \
+    --certificate-identity-regexp 'https://github\.com/samuelpkg/samuel-test-skill-signed/.*' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    /tmp/sig-check/SKILL.md
+```
 
 ## Publishing (manual, one-time + on fixture changes)
 

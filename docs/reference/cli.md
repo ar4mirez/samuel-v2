@@ -94,7 +94,7 @@ Short: Install a plugin
 | Flag | Description |
 | --- | --- |
 | `--yes` | Auto-grant requested capabilities. |
-| `--allow-unsigned` | Skip signature verification (local dev only). |
+| `--allow-unsigned` | Bypass cryptographic signature verification. Use for local plugin development or when installing from a registry whose `signature_bundle` is not yet published. The install line records `Reason: --allow-unsigned` in the lockfile for audit. Note: in v2.1+ this flag now overrides real sigstore-go verification, not a stub. |
 | `--allow-prerelease` | Allow prerelease versions during resolution. |
 | `--force` | Force reinstall even when already installed. |
 | `--dry-run` | Resolve + verify but do not write. |

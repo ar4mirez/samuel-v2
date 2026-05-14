@@ -19,11 +19,17 @@ func TestDoctor_FrameworkChecksPass(t *testing.T) {
 	assertContains(t, out, "Summary: 2 passed", "fresh project should report 2 framework checks pass")
 }
 
-func TestDoctor_PrintsStubVerifierAdvisory(t *testing.T) {
+func TestDoctor_PrintsVerifierAdvisory(t *testing.T) {
+	// v2.1 follow-up to rc.10: by default the production sigstore
+	// verifier is active and the advisory line confirms that. When
+	// SAMUEL_VERIFY_STUB=1 is set the stub-mode banner surfaces
+	// instead; both branches MUST keep an Advisories section.
 	p := newProject(t)
 	out := p.mustSamuel("doctor")
 	assertContains(t, out, "Advisories:", "doctor must render advisories section")
-	assertContains(t, out, "verifier is stubbed in v2.0", "stub advisory text must appear verbatim")
+	if !strings.Contains(out, "sigstore-go (production)") && !strings.Contains(out, "stub (test mode") {
+		t.Errorf("expected advisory naming the verifier (sigstore-go production or stub test mode); got:\n%s", out)
+	}
 }
 
 func TestDoctor_AddsPluginCheckWhenPluginInstalled(t *testing.T) {

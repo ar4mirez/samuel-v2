@@ -156,6 +156,7 @@ nav:
       - "0006: samuel run [methodology] — Ralph as default, CLI-mutation pattern": rfd/0006.md
       - "0007: Plugin migration from v1 skills": rfd/0007.md
       - "0008: Drop gstack and gbrain from the v2 framework": rfd/0008.md
+      - "0009: Plugin signing via Sigstore enforcement (v2.1)": rfd/0009.md
   - Plugins:
       - Index: plugins/index.md
   - Reference:
