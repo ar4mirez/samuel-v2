@@ -1,0 +1,123 @@
+name: E2E (live)
+
+# Nightly drift-detection tier. Runs the live e2e suite against the
+# public samuel-test-registry. Failures open a deduped GitHub issue
+# (one per failed test). Successes after a red day auto-close that
+# issue. The hermetic suite (CI workflow) is the PR gate; this job is
+# NEVER a required check. See e2e/live/README.md for the contract.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+on:
+  schedule:
+    # 05:00 UTC every day. Picked to land before US morning standup
+    # but after EU end-of-day so red issues are actionable for both.
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      registry_url:
+        description: 'Override SAMUEL_LIVE_REGISTRY_URL (default: github.com/samuelpkg/samuel-test-registry)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  live:
+    name: e2e/live
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      result: ${{ steps.run.outcome }}
+      failing_tests: ${{ steps.run.outputs.failing_tests }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run live e2e suite
+        id: run
+        env:
+          SAMUEL_LIVE_REGISTRY_URL: ${{ github.event.inputs.registry_url }}
+        run: |
+          set +e
+          go test -tags=e2e_live -count=1 -v ./e2e/live/... 2>&1 | tee live-output.log
+          status=${PIPESTATUS[0]}
+          # Extract failing test names for the auto-issue body.
+          # `go test -v` prints `--- FAIL: TestName` for each failure.
+          failing=$(grep -E '^--- FAIL:' live-output.log | awk '{print $3}' | sort -u | tr '\n' ',' | sed 's/,$//')
+          echo "failing_tests=${failing}" >> "$GITHUB_OUTPUT"
+          exit $status
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-output
+          path: live-output.log
+          retention-days: 14
+
+      - name: Open / update issue on failure
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FAILING: ${{ steps.run.outputs.failing_tests }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FAILING}" ]; then
+            FAILING="(unknown — see attached log)"
+          fi
+          # One open issue per failing test name. Idempotent: if the
+          # issue is already open, comment with the new run link; else
+          # create.
+          IFS=',' read -ra TESTS <<< "${FAILING}"
+          for name in "${TESTS[@]}"; do
+            title="[e2e-live] ${name} failing"
+            existing=$(gh issue list --label e2e-live-red --search "in:title \"${title}\"" --state open --json number --jq '.[0].number // empty')
+            run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            body=$(cat <<EOF
+          Nightly live e2e detected a failure in **${name}**.
+
+          - Workflow run: ${run_url}
+          - Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          - Registry: ${SAMUEL_LIVE_REGISTRY_URL:-github.com/samuelpkg/samuel-test-registry}
+
+          See the attached \`live-output\` artifact for the full \`go test\` log.
+
+          This issue auto-closes when the nightly goes green again.
+          EOF
+          )
+            if [ -n "${existing}" ]; then
+              gh issue comment "${existing}" --body "${body}"
+            else
+              gh issue create \
+                --title "${title}" \
+                --label e2e-live-red \
+                --label nightly \
+                --body "${body}"
+            fi
+          done
+
+      - name: Auto-close issues on recovery
+        if: success() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          # Close every open e2e-live-red issue — a fully-green nightly
+          # is the recovery signal.
+          gh issue list --label e2e-live-red --state open --json number --jq '.[].number' | while read -r num; do
+            if [ -n "${num}" ]; then
+              gh issue comment "${num}" --body "Nightly recovered at ${run_url}. Auto-closing."
+              gh issue close "${num}" --reason completed
+            fi
+          done

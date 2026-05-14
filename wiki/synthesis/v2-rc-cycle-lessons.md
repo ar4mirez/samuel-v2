@@ -90,7 +90,7 @@ Found by post-test cleanup: `.samuel/lock` was leaking into `git status` despite
 
 `e2e/hermetic/` carries 27 tests across 5 blocks mirroring every manual-test block from the cycle. Each test builds the real `samuel` binary in `TestMain`, runs it via `exec.Command` against a hermetic tempdir + isolated HOME + local file:// registry, asserts on stdout/files/exit. Full suite runs in ~3 seconds locally and in CI. **Every regression caught manually now has an automated test that runs on every PR.**
 
-The hermetic tier has one honest limitation: `file://` URLs route through `source.fetchFile`, not `source.fetchGit`, so the rc.6 (v-prefix tag fallback) and rc.9 (.git strip) fixes can't be exercised at the CLI surface from this tier. Both fixes are protected by unit tests in `internal/plugin/source/source_test.go` against a real local git repo. End-to-end coverage waits for the live-registry tier — [Issue #10](https://github.com/samuelpkg/samuel/issues/10) tracks it.
+The hermetic tier has one honest limitation: `file://` URLs route through `source.fetchFile`, not `source.fetchGit`, so the rc.6 (v-prefix tag fallback) and rc.9 (.git strip) fixes can't be exercised at the CLI surface from this tier. Both fixes are protected by unit tests in `internal/plugin/source/source_test.go` against a real local git repo. End-to-end coverage of the git-fetcher gap landed in v2.0.1 as the `e2e/live/` tier (build tag `e2e_live`, nightly cadence, auto-issue on red) — [Issue #10](https://github.com/samuelpkg/samuel/issues/10) is closed.
 
 ## The 14 RCs in one table
 
@@ -112,8 +112,8 @@ The hermetic tier has one honest limitation: `file://` URLs route through `sourc
 
 ## What's left after rc.15
 
-- **[Issue #10](https://github.com/samuelpkg/samuel/issues/10)** — `e2e/live/` tier. Nightly drift detection against the actual `samuel-registry`. Catches the kind of bugs that only manifest with real git clones and real index.toml.
-- **[Issue #6](https://github.com/samuelpkg/samuel/issues/6) (partial)** — real `sigstore-go` verifier for v2.1. The wire format and lockfile schema are stable across the transition.
+- ~~**[Issue #10](https://github.com/samuelpkg/samuel/issues/10)** — `e2e/live/` tier.~~ **Closed in v2.0.1** by PRD 0007. Nightly drift detection against `samuel-test-registry` exercises the `source.fetchGit` codepath (rc.6 v-prefix fallback, rc.9 `.git` strip) plus install/update/search/doctor/uninstall at the CLI surface. Auto-issue on red, auto-close on recovery.
+- **Remaining open after v2.0.1**: real Sigstore math via `sigstore-go` (PRD 0008, [Issue #6](https://github.com/samuelpkg/samuel/issues/6) partial) for v2.1. The wire format + lockfile schema stay stable across that transition; the live e2e tier currently runs with `SAMUEL_VERIFY_ALLOW_UNSIGNED=1` until signing lands.
 - **WASM and OCI plugin tiers** — both depend on at least one published plugin of each kind existing in the live registry. Out of scope for v2.0.
 
 ## Tagged entities introduced this cycle

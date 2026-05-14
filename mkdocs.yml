@@ -162,6 +162,7 @@ nav:
       - CLI: reference/cli.md
       - FAQ: reference/faq.md
       - Cross-tool generation: reference/cross-tool.md
+      - Testing tiers: reference/testing.md
       - Changelog: reference/changelog.md
   - Blog:
       - "Samuel v2 launch": blog/samuel-v2-launch.md

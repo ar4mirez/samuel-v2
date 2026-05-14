@@ -1,0 +1,7 @@
+name = "samuel-test-skill-basic"
+version = "1.0.0"
+kind = "skill"
+summary = "Minimal live-e2e fixture skill (happy path)."
+
+[capabilities]
+required = ["filesystem.read"]

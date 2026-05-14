@@ -1,0 +1,7 @@
+name = "samuel-test-skill-with-git"
+version = "1.0.0"
+kind = "skill"
+summary = "Live-e2e fixture: clone retains .git/ until install strips it (rc.9)."
+
+[capabilities]
+required = ["filesystem.read"]

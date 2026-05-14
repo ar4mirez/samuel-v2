@@ -1,0 +1,7 @@
+name = "samuel-test-skill-tagged-bare"
+version = "1.0.0"
+kind = "skill"
+summary = "Live-e2e fixture: release tagged 1.0.0 — bare-semver fallback."
+
+[capabilities]
+required = ["filesystem.read"]

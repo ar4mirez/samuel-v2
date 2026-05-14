@@ -1,0 +1,54 @@
+schema_version = 1
+
+# Internal e2e/live fixtures. Do not depend on these plugins.
+# See README.md in this directory for the fixture matrix + publish steps.
+
+[[plugins]]
+name = "samuel-test-skill-basic"
+repo = "github.com/samuelpkg/samuel-test-skill-basic"
+latest = "1.0.0"
+versions = ["1.0.0"]
+description = "Minimal skill fixture for the live e2e tier (happy path)."
+categories = ["test"]
+tags = ["fixture", "samuel-e2e-live", "basic"]
+kind = "skill"
+
+[[plugins]]
+name = "samuel-test-skill-tagged-v"
+repo = "github.com/samuelpkg/samuel-test-skill-tagged-v"
+latest = "1.0.0"
+versions = ["1.0.0"]
+description = "Live fixture: release tagged v1.0.0 (rc.6 protection)."
+categories = ["test"]
+tags = ["fixture", "samuel-e2e-live", "v-prefix"]
+kind = "skill"
+
+[[plugins]]
+name = "samuel-test-skill-tagged-bare"
+repo = "github.com/samuelpkg/samuel-test-skill-tagged-bare"
+latest = "1.0.0"
+versions = ["1.0.0"]
+description = "Live fixture: release tagged 1.0.0 — bare-semver fallback (rc.6)."
+categories = ["test"]
+tags = ["fixture", "samuel-e2e-live", "bare-semver"]
+kind = "skill"
+
+[[plugins]]
+name = "samuel-test-skill-with-git"
+repo = "github.com/samuelpkg/samuel-test-skill-with-git"
+latest = "1.0.0"
+versions = ["1.0.0"]
+description = "Live fixture: repo with .git/ present after clone (rc.9 protection)."
+categories = ["test"]
+tags = ["fixture", "samuel-e2e-live", "dotgit"]
+kind = "skill"
+
+[[plugins]]
+name = "samuel-test-skill-updatable"
+repo = "github.com/samuelpkg/samuel-test-skill-updatable"
+latest = "1.1.0"
+versions = ["1.0.0", "1.1.0"]
+description = "Live fixture: two-version repo for the update-path test."
+categories = ["test"]
+tags = ["fixture", "samuel-e2e-live", "update"]
+kind = "skill"
