@@ -86,7 +86,26 @@ func (defaultFetcher) Fetch(ctx context.Context, req FetchRequest) (*Fetched, er
 		// snapshots) so non-released forks still work.
 		owner, name, ok := splitGitHubRepo(repo)
 		if ok {
-			if got, rerr := fetchGitHubRelease(ctx, req, owner, name); rerr == nil {
+			if got, rerr := fetchGitHubRelease(ctx, req, owner, name, githubReleaseAssets); rerr == nil {
+				return got, nil
+			}
+		}
+		return fetchGit(ctx, req, "https://"+repo+".git")
+	case strings.HasPrefix(repo, "github.com/") && strings.EqualFold(req.Kind, "oci"):
+		// PRD 0010 release-asset path: oci-tier release workflows
+		// publish samuel-plugin.toml (with the digest CI rewrites in)
+		// + <repo>.bundle (signature). The repo's main branch carries
+		// a placeholder digest, so the install must read the release
+		// asset, not the tree. Fall back to git for unreleased forks.
+		//
+		// Bundle file naming follows the scaffolded workflow's
+		// convention: `<repo-name>.bundle` (e.g. the
+		// samuel-claude-code-oci repo publishes
+		// samuel-claude-code-oci.bundle). That matches the repo name
+		// rather than the registry-alias plugin name.
+		owner, repoName, ok := splitGitHubRepo(repo)
+		if ok {
+			if got, rerr := fetchGitHubRelease(ctx, req, owner, repoName, ociReleaseAssetSet(repoName)); rerr == nil {
 				return got, nil
 			}
 		}

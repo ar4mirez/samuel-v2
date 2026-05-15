@@ -52,6 +52,23 @@ var githubReleaseAssets = struct {
 	optional: []string{"plugin.wasm.bundle", "plugin.wasm.sig", "plugin.wasm.pem"},
 }
 
+// ociReleaseAssetSet builds the per-plugin asset list for the OCI
+// release flow. OCI tier plugins don't ship a binary at install time —
+// only the digest-pinned manifest. The signature bundle is named after
+// the plugin (`<plugin>.bundle`) per the scaffolded release workflow.
+func ociReleaseAssetSet(pluginName string) struct {
+	required []string
+	optional []string
+} {
+	return struct {
+		required []string
+		optional []string
+	}{
+		required: []string{"samuel-plugin.toml"},
+		optional: []string{pluginName + ".bundle"},
+	}
+}
+
 // splitGitHubRepo parses `github.com/<owner>/<repo>` into its two
 // path components. Returns ok=false for any other shape.
 func splitGitHubRepo(repo string) (owner, name string, ok bool) {
@@ -86,12 +103,17 @@ func releaseTags(ref string) []string {
 // fetchGitHubRelease downloads release assets for the resolved tag
 // into <Workdir>/src/. Missing required files return an error so the
 // caller can fall back to fetchGit; missing optional files are
-// recorded silently.
-func fetchGitHubRelease(ctx context.Context, req FetchRequest, owner, name string) (*Fetched, error) {
+// recorded silently. The asset set varies by tier (wasm vs oci); the
+// caller passes it in.
+func fetchGitHubRelease(ctx context.Context, req FetchRequest, owner, name string, assets struct {
+	required []string
+	optional []string
+},
+) (*Fetched, error) {
 	if req.Ref == "" {
 		return nil, &errors.Error{
 			Component:   Component,
-			Problem:     "wasm release fetch requires an explicit version",
+			Problem:     "release fetch requires an explicit version",
 			Fix:         "the registry index must publish `latest = \"X.Y.Z\"`",
 			Recoverable: true,
 		}
@@ -113,7 +135,7 @@ func fetchGitHubRelease(ctx context.Context, req FetchRequest, owner, name strin
 	client := &http.Client{Timeout: 60 * time.Second}
 	var lastErr error
 	for _, tag := range releaseTags(req.Ref) {
-		err := downloadReleaseAssets(ctx, client, owner, name, tag, dest)
+		err := downloadReleaseAssets(ctx, client, owner, name, tag, dest, assets)
 		if err == nil {
 			root := dest
 			if req.Subpath != "" {
@@ -138,14 +160,18 @@ func fetchGitHubRelease(ctx context.Context, req FetchRequest, owner, name strin
 // downloadReleaseAssets pulls every required + optional asset for
 // (owner, name, tag) into dest. Returns a release-not-found error
 // when any required asset is missing.
-func downloadReleaseAssets(ctx context.Context, client *http.Client, owner, name, tag, dest string) error {
+func downloadReleaseAssets(ctx context.Context, client *http.Client, owner, name, tag, dest string, assets struct {
+	required []string
+	optional []string
+},
+) error {
 	base := fmt.Sprintf("https://github.com/%s/%s/releases/download/%s", owner, name, tag)
-	for _, asset := range githubReleaseAssets.required {
+	for _, asset := range assets.required {
 		if err := downloadOne(ctx, client, base+"/"+asset, filepath.Join(dest, asset), true); err != nil {
 			return err
 		}
 	}
-	for _, asset := range githubReleaseAssets.optional {
+	for _, asset := range assets.optional {
 		// Optional assets: a 404 is non-fatal; surface only network /
 		// transport errors.
 		if err := downloadOne(ctx, client, base+"/"+asset, filepath.Join(dest, asset), false); err != nil {

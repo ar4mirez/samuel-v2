@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/samuelpkg/samuel/internal/config"
@@ -234,10 +235,30 @@ func (s *Service) verifyArtifact(ctx context.Context, root string, m *manifest.M
 		return s.Verifier.VerifyBlob(ctx, modPath, req)
 	case manifest.KindOci:
 		// Digest is pinned post-pull; verify after install, but we
-		// honor the policy here against the manifest image ref.
+		// honor the policy here against the manifest image ref. PRD
+		// 0010 manifests carry the digest inside [oci].image
+		// (ref@sha256:...) rather than the legacy [oci].digest field;
+		// fall back to extracting it from the image reference so v2.3
+		// digest-pinned manifests verify cleanly.
 		digest := ""
 		if m.OCI != nil {
 			digest = m.OCI.Digest
+			if digest == "" && m.OCI.Image != "" {
+				if parsed, perr := oci.ParseImageName(m.OCI.Image); perr == nil {
+					digest = parsed.Digest
+				}
+			}
+		}
+		// Resolve the cosign bundle the OCI release workflow uploads
+		// alongside samuel-plugin.toml. The scaffold's convention is
+		// `<repo-name>.bundle`, and the manifest's plugin name equals
+		// the repo name for first-party plugins. Pick the first .bundle
+		// file present in the fetched root so plugin authors who name
+		// the bundle differently still verify cleanly.
+		if req.BundlePath == "" {
+			if bp := resolveOciBundle(root, m.Name); bp != "" {
+				req.BundlePath = bp
+			}
 		}
 		return s.Verifier.VerifyImage(ctx, digest, req)
 	}
@@ -516,6 +537,34 @@ func (a AvailableEntry) HasUpdate() bool {
 		return false
 	}
 	return a.InstalledVersion != a.Plugin.Latest
+}
+
+// resolveOciBundle locates the cosign bundle published alongside an
+// OCI plugin's release artifacts. The scaffolded workflow names the
+// bundle `<repo-name>.bundle` and the plugin name equals the repo
+// name for first-party plugins, so we try `<pluginName>.bundle`
+// first. If absent, return the first `*.bundle` we find in root so
+// authors with non-standard naming still verify.
+func resolveOciBundle(root, pluginName string) string {
+	if pluginName != "" {
+		candidate := filepath.Join(root, pluginName+".bundle")
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(e.Name(), ".bundle") {
+			return filepath.Join(root, e.Name())
+		}
+	}
+	return ""
 }
 
 // EnsureProjectInitialized returns an actionable error when there is no
