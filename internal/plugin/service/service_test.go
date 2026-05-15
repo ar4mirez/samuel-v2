@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/samuelpkg/samuel/internal/config"
@@ -232,7 +233,8 @@ func TestService_InstallWasm_HealthOK(t *testing.T) {
 func TestService_InstallOci_PullsImage(t *testing.T) {
 	ctx := context.Background()
 	src := t.TempDir()
-	tomlBody := "name = \"claude-runner\"\nversion = \"1.0.0\"\nkind = \"oci\"\n\n[oci]\nimage = \"ghcr.io/samuelpkg/samuel-runner-claude:1.0.0\"\n"
+	digestHex := strings.Repeat("a", 64)
+	tomlBody := "name = \"claude-runner\"\nversion = \"1.0.0\"\nkind = \"oci\"\n\n[oci]\nimage = \"ghcr.io/samuelpkg/samuel-runner-claude@sha256:" + digestHex + "\"\n"
 	if err := os.WriteFile(filepath.Join(src, manifest.FileName), []byte(tomlBody), 0o644); err != nil {
 		t.Fatal(err)
 	}

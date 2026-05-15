@@ -12,7 +12,7 @@ import (
 // plugin. These tests skip until `samuel-go-guide-wasm@1.0.0` is in
 // the public registry — the framework lands ahead of the plugin
 // release, and the registry publish step is owned by the plugin's
-// own GitHub Actions release flow (examples/samuel-go-guide-wasm/
+// own GitHub Actions release flow (samuelpkg/samuel-go-guide-wasm's
 // .github/workflows/release.yml).
 //
 // Set SAMUEL_LIVE_WASM_PLUGIN=1 to enable. The framework's nightly

@@ -120,6 +120,28 @@ exports = ["lint"]
 }
 
 func TestParse_Valid_OCI(t *testing.T) {
+	// PRD 0010 §Functional 2: image MUST be digest-pinned.
+	digest := strings.Repeat("a", 64)
+	body := []byte(`
+name = "claude-runner"
+version = "1.0.0"
+kind = "oci"
+
+[oci]
+image = "ghcr.io/samuelpkg/samuel-runner-claude@sha256:` + digest + `"
+`)
+	m, err := Parse(body, "oci.toml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if m.OCI == nil || m.OCI.Image == "" {
+		t.Errorf("oci block not parsed: %+v", m.OCI)
+	}
+}
+
+// TestParse_OCI_RejectsTagOnly enforces PRD 0010 §Functional 2: an
+// [oci].image without an @sha256 suffix must be rejected at parse time.
+func TestParse_OCI_RejectsTagOnly(t *testing.T) {
 	body := []byte(`
 name = "claude-runner"
 version = "1.0.0"
@@ -128,12 +150,9 @@ kind = "oci"
 [oci]
 image = "ghcr.io/samuelpkg/samuel-runner-claude:1.0.0"
 `)
-	m, err := Parse(body, "oci.toml")
-	if err != nil {
-		t.Fatalf("Parse: %v", err)
-	}
-	if m.OCI == nil || m.OCI.Image == "" {
-		t.Errorf("oci block not parsed: %+v", m.OCI)
+	_, err := Parse(body, "oci.toml")
+	if err == nil || !strings.Contains(err.Error(), "digest-pinned") {
+		t.Fatalf("expected digest-pinned rejection, got %v", err)
 	}
 }
 

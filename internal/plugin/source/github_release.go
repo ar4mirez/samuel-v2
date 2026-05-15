@@ -36,7 +36,7 @@ import (
 
 // githubReleaseAssets enumerates the filenames the wasm-tier release
 // flow publishes (see internal/commands/new.go's scaffolded
-// release.yml + examples/samuel-go-guide-wasm/.github/workflows/
+// release.yml + samuelpkg/samuel-go-guide-wasm's .github/workflows/
 // release.yml).
 //
 // `plugin.wasm.bundle` is the sigstore-go JSON bundle the verifier

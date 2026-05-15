@@ -20,6 +20,7 @@ The table is regenerated from [`rfd-index.toml`](https://github.com/samuelpkg/sa
 | [0008](0008.md) | Drop gstack and gbrain from the v2 framework | Committed | v2, scope, deprecation, clean-break |
 | [0009](0009.md) | Plugin signing via Sigstore enforcement (v2.1) | Committed | v2, v2.1, signing, sigstore, security, plugin-verify |
 | [0010](0010.md) | WASM plugin tier — wazero + TinyGo + capability gates | Published | v2, v2.2, plugins, wasm, wazero, tinygo, capabilities |
+| [0011](0011.md) | OCI plugin tier + network policy (v2.3) | Published | v2, v2.3, plugins, oci, podman, docker, sandbox, network-policy |
 
 <!-- RFD_INDEX_END -->
 

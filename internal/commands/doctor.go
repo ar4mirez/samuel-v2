@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/samuelpkg/samuel/internal/errors"
 	"github.com/samuelpkg/samuel/internal/plugin"
 	"github.com/samuelpkg/samuel/internal/plugin/manifest"
+	"github.com/samuelpkg/samuel/internal/plugin/oci"
 	"github.com/samuelpkg/samuel/internal/plugin/service"
 	"github.com/samuelpkg/samuel/internal/plugin/verify"
 	"github.com/samuelpkg/samuel/internal/ui"
@@ -73,6 +75,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// #3 — doctor advertised "framework + plugin health" but only
 	// checked framework health pre-rc.11.
 	checks = append(checks, checkInstalledPlugins()...)
+
+	// OCI tier health (PRD 0010 §Functional 11): report detected
+	// runtime + version + image-cache size. Skipped quietly when no
+	// runtime is available — the deny-by-default ergonomic.
+	checks = append(checks, checkOciRuntime())
 
 	// Detect coding-assistant binaries to suggest translator plugins
 	// per RFD 0002 §1. Informational only — no health gate.
@@ -390,6 +397,18 @@ func checkOnePlugin(projectDir string, lp config.LockedPlugin) checkResult {
 				FixHint:   "samuel install " + lp.Name + " --force",
 			}
 		}
+		// PRD 0010 §Functional 11.2 — verify the image digest in the
+		// manifest matches what samuel.lock recorded at install time.
+		// Drift is the canonical "someone retagged the image" footprint
+		// and the user gets the `--fix` hint to re-pull (§11.3).
+		if lp.Digest != "" && !strings.Contains(m.OCI.Image, lp.Digest) {
+			return checkResult{
+				Component: component,
+				OK:        false,
+				Message:   "oci image digest drift: lockfile @" + lp.Digest + " but manifest @" + m.OCI.Image,
+				FixHint:   "samuel install " + lp.Name + " --force",
+			}
+		}
 	}
 
 	return checkResult{
@@ -529,6 +548,84 @@ func suggestTranslators() []string {
 		}
 	}
 	return out
+}
+
+// checkOciRuntime reports the detected container runtime + version +
+// image-cache size. PRD 0010 §Functional 11. Returns a benign
+// "skipped" check when no runtime is available so doctor stays useful
+// for users who never touch the OCI tier.
+func checkOciRuntime() checkResult {
+	// Reset the per-process cache so doctor surfaces fresh detection
+	// state — important when the user just installed podman.
+	oci.ResetRuntimeCacheForTest()
+	rt, err := oci.DetectRuntime()
+	if err != nil {
+		return checkResult{
+			Component: "oci-runtime",
+			OK:        true,
+			Message:   "no container runtime detected (OCI tier disabled)",
+			FixHint:   "install podman or docker to enable the OCI tier",
+		}
+	}
+	mode := ""
+	if rt.Rootless {
+		mode = " (rootless)"
+	}
+	msg := fmt.Sprintf("%s%s", rt.Kind, mode)
+	if rt.Version != "" {
+		msg += ", version " + rt.Version
+	}
+	if size, err := ociCacheSize(); err == nil {
+		msg += fmt.Sprintf(", cache %s", humanBytes(size))
+	}
+	return checkResult{
+		Component: "oci-runtime",
+		OK:        true,
+		Message:   msg,
+	}
+}
+
+// ociCacheSize sums every file under ~/.samuel/cache/oci/images/.
+// Returns 0 when the directory does not yet exist — the cache is
+// populated lazily on first `samuel install --kind=oci`.
+func ociCacheSize() (int64, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return 0, err
+	}
+	root := filepath.Join(home, ".samuel", "cache", "oci", "images")
+	var total int64
+	err = filepath.Walk(root, func(_ string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			if os.IsNotExist(walkErr) {
+				return nil
+			}
+			return walkErr
+		}
+		if !info.IsDir() {
+			total += info.Size()
+		}
+		return nil
+	})
+	if err != nil && !os.IsNotExist(err) {
+		return 0, err
+	}
+	return total, nil
+}
+
+// humanBytes renders a size as "1.2 GB" / "500 MB" / "2 KB". The
+// units stop at GB because OCI image budgets are gigabyte-scale.
+func humanBytes(n int64) string {
+	switch {
+	case n >= 1<<30:
+		return fmt.Sprintf("%.1f GB", float64(n)/float64(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.0f MB", float64(n)/float64(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.0f KB", float64(n)/float64(1<<10))
+	default:
+		return fmt.Sprintf("%d B", n)
+	}
 }
 
 // detectV1Leftovers reports whether the v1 user-scoped skills tree

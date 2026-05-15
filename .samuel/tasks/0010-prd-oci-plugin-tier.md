@@ -167,21 +167,21 @@ Per-call consents are persisted in `~/.samuel/policy/network.toml` so users aren
 
 ## Acceptance criteria
 
-- [ ] `Detect()` returns the expected runtime in order; tests cover all three positive cases + the ErrNoRuntime case.
-- [ ] `SAMUEL_RUNTIME` env var override works for all three values.
-- [ ] `samuel doctor` reports container runtime + version + image cache size.
-- [ ] OCI plugin install path works end-to-end against a local registry fixture (hermetic).
-- [ ] OCI plugin install path works against `ghcr.io` (live).
-- [ ] Capability enforcement: `TestOCI_CapabilityDeny_*` tests all pass.
-- [ ] Network policy: deny-by-default; consent prompt fires for unallowlisted hosts; persisted to `~/.samuel/policy/network.toml`.
-- [ ] `samuel policy list` / `reset` / `reset --plugin` work; JSON mode supported.
-- [ ] `samuel run --sandbox=oci` against the tetris fixture completes at least one iteration with a containerized Claude Code agent.
-- [ ] `samuel new plugin --kind=oci --name=hello` produces a buildable scaffold.
-- [ ] `samuel-claude-code-oci` published to registry, signed.
-- [ ] `docs/plugin-authors/oci.md` + `docs/concepts/oci-runtime.md` + `docs/concepts/network-policy.md` published.
-- [ ] `docs/rfd/0011.md` committed and rendered in mkdocs.
-- [ ] CHANGELOG v2.3.0 entry committed.
-- [ ] v2.3.0-rc.1 → soak 2 weeks (longer because of policy surface) → v2.3.0 tag.
+- [x] `Detect()` returns the expected runtime in order; tests cover all three positive cases + the ErrNoRuntime case.
+- [x] `SAMUEL_RUNTIME` env var override works for all three values.
+- [x] `samuel doctor` reports container runtime + version + image cache size.
+- [x] OCI plugin install path works end-to-end against a local registry fixture (hermetic).
+- [x] OCI plugin install path works against `ghcr.io` (live).
+- [x] Capability enforcement: `TestOCI_CapabilityDeny_*` tests all pass.
+- [x] Network policy: deny-by-default; consent prompt fires for unallowlisted hosts; persisted to `~/.samuel/policy/network.toml`.
+- [x] `samuel policy list` / `reset` / `reset --plugin` work; JSON mode supported.
+- [x] `samuel run --sandbox=oci` against the tetris fixture completes at least one iteration with a containerized Claude Code agent.
+- [x] `samuel new plugin --kind=oci --name=hello` produces a buildable scaffold.
+- [x] `samuel-claude-code-oci` published to registry, signed.
+- [x] `docs/plugin-authors/oci.md` + `docs/concepts/oci-runtime.md` + `docs/concepts/network-policy.md` published.
+- [x] `docs/rfd/0011.md` committed and rendered in mkdocs.
+- [x] CHANGELOG v2.3.0 entry committed.
+- [x] v2.3.0-rc.1 → soak 2 weeks (longer because of policy surface) → v2.3.0 tag.
 
 ## Risks
 

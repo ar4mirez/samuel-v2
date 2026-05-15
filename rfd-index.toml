@@ -128,3 +128,15 @@ updated = "2026-05-14"
 path = "docs/rfd/0010.md"
 discussion = ""
 related_prd = "0009-prd-wasm-plugin-tier.md"
+
+[[rfds]]
+number = "0011"
+title = "OCI plugin tier + network policy (v2.3)"
+state = "Published"
+authors = ["ar4mirez"]
+labels = ["v2", "v2.3", "plugins", "oci", "podman", "docker", "sandbox", "network-policy"]
+created = "2026-05-14"
+updated = "2026-05-14"
+path = "docs/rfd/0011.md"
+discussion = ""
+related_prd = "0010-prd-oci-plugin-tier.md"

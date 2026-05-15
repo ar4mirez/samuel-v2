@@ -186,3 +186,14 @@ Error: signature verification failed for foo
 ```
 
 The implementation lives in [`internal/plugin/verify/sigstore.go`](https://github.com/samuelpkg/samuel/blob/main/internal/plugin/verify/sigstore.go); design rationale and trade-offs are in [RFD 0009](../rfd/0009.md). Tracking issue: [#6](https://github.com/samuelpkg/samuel/issues/6) (closed).
+
+## OCI plugins sign images, not blobs
+
+OCI-tier plugins (PRD 0010) sign the container image directly rather than a single asset blob. The cosign invocation in the scaffolded `.github/workflows/release.yml` is:
+
+```bash
+cosign sign --yes --new-bundle-format --bundle plugin.bundle \
+  ghcr.io/<owner>/<plugin>@${digest}
+```
+
+The artifact under verification is the image digest (`sha256:…`) — `samuel install` validates the digest in the manifest's `[oci].image` field against the bundle's subject before pulling. Tag-only references are rejected at parse time, so the digest you sign is the digest that gets installed.

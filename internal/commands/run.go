@@ -88,8 +88,8 @@ func init() {
 	runInitCmd.Flags().String("prd", "", "Path to PRD markdown to convert")
 	runInitCmd.Flags().String("ai-tool", "claude", "Agent adapter (claude|codex|copilot|gemini|kiro)")
 	runInitCmd.Flags().Int("max-iterations", 50, "Maximum loop iterations")
-	runInitCmd.Flags().String("sandbox", "none", "Sandbox mode (none|oci)")
-	runInitCmd.Flags().String("sandbox-image", "", "Container image when sandbox=oci")
+	runInitCmd.Flags().String("sandbox", "host", "Sandbox mode (host|oci) — v2.3 default host; flips to oci in v2.4 once soaked")
+	runInitCmd.Flags().String("sandbox-image", "", "Container image when sandbox=oci (defaults to the adapter's DefaultImage)")
 	runInitCmd.Flags().String("methodology", "ralph", "Methodology to run")
 
 	// start flags

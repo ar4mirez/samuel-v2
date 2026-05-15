@@ -30,7 +30,12 @@ import (
 
 // Mode names.
 const (
+	// SandboxNone is the legacy value preserved for back-compat. It maps
+	// to the host-exec path.
 	SandboxNone   = "none"
+	// SandboxHost is the PRD 0010 spelling of the same host-exec path.
+	// Accepted on the `samuel run --sandbox=host` flag.
+	SandboxHost   = "host"
 	SandboxOCI    = "oci"
 	SandboxDryRun = "dry-run"
 )
@@ -93,13 +98,17 @@ func New(projectDir string) *Runner {
 	return r
 }
 
-// Run dispatches to the correct backend based on opts.Sandbox.
+// Run dispatches to the correct backend based on opts.Sandbox. Accepts
+// the legacy "none" value, the PRD 0010 "host" synonym, "oci", and
+// "dry-run".
 func (r *Runner) Run(ctx context.Context, name string, args []string, opts agents.CommandOptions) (agents.Result, error) {
 	switch strings.ToLower(opts.Sandbox) {
 	case SandboxOCI:
 		return r.runOCI(ctx, name, args, opts)
 	case SandboxDryRun:
 		return agents.Result{Stdout: fmt.Sprintf("[sandbox-dry-run] %s %v", name, args)}, nil
+	case SandboxHost, SandboxNone, "":
+		return r.runHost(ctx, name, args, opts)
 	default:
 		return r.runHost(ctx, name, args, opts)
 	}

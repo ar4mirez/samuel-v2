@@ -88,6 +88,9 @@ func (p *Plugin) Install(ctx context.Context, opts plugin.InstallOptions) (plugi
 	if _, err := ParseImageName(p.image()); err != nil {
 		return res, err
 	}
+	if err := ValidateDigestPinned(p.image()); err != nil {
+		return res, err
+	}
 	if opts.DryRun {
 		return res, nil
 	}

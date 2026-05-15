@@ -67,11 +67,19 @@ func ResetFlagsForTest() {
 		_ = f.Value.Set(f.DefValue)
 		f.Changed = false
 	})
-	for _, sub := range rootCmd.Commands() {
+	resetTree(rootCmd)
+}
+
+// resetTree resets every flag on cmd and recurses into nested
+// subcommands. Required for command groups like `policy <subcommand>`
+// where a leaked --allow flag from one test bleeds into the next.
+func resetTree(cmd *cobra.Command) {
+	for _, sub := range cmd.Commands() {
 		sub.Flags().VisitAll(func(f *pflagFlag) {
 			_ = f.Value.Set(f.DefValue)
 			f.Changed = false
 		})
+		resetTree(sub)
 	}
 }
 

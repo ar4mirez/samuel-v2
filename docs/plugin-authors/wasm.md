@@ -243,5 +243,5 @@ performance-tuned. The framework's
 `BenchmarkColdStart_TinyGoReference` benches against the published
 binary so any framework-side regression is caught before release.
 
-Source lives in `examples/samuel-go-guide-wasm/` during the v2.2 dev
-cycle; it ships to its own repo before the stable tag.
+Source lives at
+[`samuelpkg/samuel-go-guide-wasm`](https://github.com/samuelpkg/samuel-go-guide-wasm).

@@ -78,14 +78,196 @@ func runNewPlugin(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 	case "oci":
-		ui.Warn("oci-tier scaffolding lands in PRD 0010 (v2.3.0). Skeleton not generated.")
-		return nil
+		if err := scaffoldOciPlugin(target, name); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown plugin kind %q (expected: skill | wasm | oci)", kind)
 	}
 	ui.Print("Scaffolded plugin at %s", target)
-	ui.ListItem(1, "next: cd %s && make wasm", name)
+	switch strings.ToLower(kind) {
+	case "oci":
+		ui.ListItem(1, "next: cd %s && make image", name)
+	default:
+		ui.ListItem(1, "next: cd %s && make wasm", name)
+	}
 	return nil
+}
+
+func scaffoldOciPlugin(target, name string) error {
+	files := map[string]string{
+		"samuel-plugin.toml":           ociManifestTemplate(name),
+		"Containerfile":                ociContainerfileTemplate(),
+		"Makefile":                     ociMakefileTemplate(name),
+		"README.md":                    ociReadmeTemplate(name),
+		".github/workflows/release.yml": ociReleaseWorkflowTemplate(),
+		".gitignore":                   "*.bundle\n*.tar\n",
+	}
+	for rel, content := range files {
+		dst := filepath.Join(target, rel)
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(dst, []byte(content), 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ociManifestTemplate(name string) string {
+	zeroDigest := strings.Repeat("0", 64)
+	return fmt.Sprintf(`name = %q
+version = "0.1.0"
+kind = "oci"
+summary = "TODO: one-line description"
+license = "MIT"
+
+[samuel]
+framework = "^2.3.0"
+protocol = "^1.0.0"
+
+[oci]
+# CI replaces the digest below on every release. Tag-only refs are
+# rejected by 'samuel install' (PRD 0010 §Functional 2).
+image        = "ghcr.io/your-org/%s@sha256:%s"
+entrypoint   = ["/opt/%s/run"]
+workdir      = "/workspace"
+cpu_quota    = "1"
+memory_limit = "512m"
+
+[capabilities]
+exec = false
+env  = []
+
+[capabilities.filesystem]
+read  = ["/workspace"]
+write = []
+
+[capabilities.network]
+# Deny-by-default. List the hosts the plugin needs here; everything
+# else triggers a consent prompt at proxy time.
+allowed_hosts = []
+`, name, name, zeroDigest, name)
+}
+
+func ociContainerfileTemplate() string {
+	return `# syntax=docker/dockerfile:1.6
+FROM alpine:3.20
+
+RUN adduser -D -u 10001 samuel \
+ && mkdir -p /workspace && chown samuel:samuel /workspace
+
+# TODO: install your plugin's runtime into /opt/<name>/.
+
+USER samuel
+WORKDIR /workspace
+ENTRYPOINT ["/bin/sh", "-c", "echo 'hello from samuel oci plugin' && exec sleep infinity"]
+`
+}
+
+func ociMakefileTemplate(name string) string {
+	return fmt.Sprintf(`IMAGE   ?= ghcr.io/your-org/%s
+TAG     ?= dev
+PLATFORM ?= linux/amd64,linux/arm64
+
+.PHONY: image push test
+
+image:
+	podman build --platform=$(PLATFORM) -t $(IMAGE):$(TAG) -f Containerfile .
+
+push:
+	podman push $(IMAGE):$(TAG)
+
+test:
+	podman run --rm $(IMAGE):$(TAG) --help || true
+`, name)
+}
+
+func ociReadmeTemplate(name string) string {
+	return fmt.Sprintf(`# %s
+
+A Samuel OCI plugin scaffold.
+
+## Build
+
+`+"```bash\nmake image\n```"+`
+
+## Install locally for testing
+
+`+"```bash\nsamuel install file://$(pwd) --allow-unsigned\n```"+`
+
+## Release
+
+The release workflow at .github/workflows/release.yml builds the
+image multi-arch (linux/amd64 + linux/arm64), signs with cosign
+keyless OIDC, pushes to GHCR, and writes the digest back into
+samuel-plugin.toml.
+
+See: https://samuelpkg.github.io/samuel/docs/plugin-authors/oci
+`, name)
+}
+
+func ociReleaseWorkflowTemplate() string {
+	return `name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Containerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.ref_name }}
+            ${{ env.IMAGE }}:latest
+      - uses: sigstore/cosign-installer@v4.1.2
+        with:
+          # cosign-installer's v3 floating tag tops out at cosign v2.x.
+          # No floating v4 tag exists yet, so pin the exact patch
+          # (v4.1.2). v4.x.x is required for cosign v3 binaries, which
+          # is the minimum supporting --new-bundle-format on
+          # 'cosign sign' (image signing).
+          cosign-release: v3.0.6
+      - env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          digest="${{ steps.build.outputs.digest }}"
+          cosign sign --yes --new-bundle-format \
+            --bundle plugin.bundle \
+            ${{ env.IMAGE }}@${digest}
+          sed -i "s|@sha256:[0-9a-f]\{64\}|@${digest}|g" samuel-plugin.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oci-plugin-${{ github.ref_name }}
+          path: |
+            samuel-plugin.toml
+            plugin.bundle
+`
 }
 
 func scaffoldWasmPlugin(target, name string) error {

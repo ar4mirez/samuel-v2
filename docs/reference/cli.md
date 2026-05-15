@@ -221,6 +221,48 @@ Add a task with auto-generated id. Flags: `--priority`, `--complexity`, `--sourc
 
 Add a task with explicit id (for CI / scripts where deterministic ids matter).
 
+## `samuel policy`
+
+Manage the OCI tier's network-policy consent store (PRD 0010).
+Consents live at `~/.samuel/policy/network.toml`; every decision is
+recorded in `~/.samuel/policy/audit.log`.
+
+### `samuel policy list`
+
+List recorded `(plugin, host, decision)` tuples.
+
+| Flag | Description |
+| --- | --- |
+| `--json` | Machine-readable envelope. |
+
+### `samuel policy reset`
+
+Clear consents. Without `--plugin`, every recorded consent is removed
+(requires `--yes` confirmation). With `--plugin <name>`, only that
+plugin's consents are cleared.
+
+| Flag | Description |
+| --- | --- |
+| `--plugin <name>` | Scope reset to a single plugin. |
+| `--yes` | Skip the confirmation prompt. |
+
+### `samuel policy prompt`
+
+Print the most recent decisions so an operator can verify what a
+plugin asked for (CI debug aid).
+
+### `samuel policy preauth`
+
+Inject a consent without prompting. Used by CI flows that pre-allowlist
+hosts.
+
+| Flag | Description |
+| --- | --- |
+| `--plugin <name>` | Plugin name (required). |
+| `--host <host>` | Host pattern (required). |
+| `--allow` | Pre-allow the pair. |
+| `--deny` | Pre-deny the pair. |
+
 ## `samuel plugin`
 
 Plugin authoring + registry administration. Consumed by `samuelpkg/samuel-plugin-release`.

@@ -32,6 +32,7 @@ const SchemaVersion = "1"
 //	[methodology.<name>] enabled=… agent=… max_iterations=… quality_checks=[…]
 //	[guardrails] max_function_lines=… max_file_lines=… require_tests=…
 //	[[registries]] name="…" url="…" default=true
+//	[oci] cache_budget = "10g"
 type Config struct {
 	Version            string                 `toml:"version"`
 	DefaultMethodology string                 `toml:"default_methodology,omitempty"`
@@ -40,6 +41,15 @@ type Config struct {
 	Guardrails         *Guardrails            `toml:"guardrails,omitempty"`
 	Registries         []Registry             `toml:"registries,omitempty"`
 	Translators        *Translators           `toml:"translators,omitempty"`
+	OCI                *OCIConfig             `toml:"oci,omitempty"`
+}
+
+// OCIConfig governs the user-scoped OCI tier settings (PRD 0010
+// §Functional 12.4). cache_budget is a size string ("10g", "500m")
+// the image-cache LRU consults before evicting old entries; the empty
+// string falls back to the 10 GB default.
+type OCIConfig struct {
+	CacheBudget string `toml:"cache_budget,omitempty"`
 }
 
 // PluginEntry is one [[plugins]] block in samuel.toml.
@@ -161,6 +171,19 @@ type Lockfile struct {
 	Plugins      []LockedPlugin   `toml:"plugins,omitempty"`
 	Mutations    []MutationRecord `toml:"mutations,omitempty"`
 	Capabilities []string         `toml:"capabilities,omitempty"`
+	// Agents pins the per-adapter container image digest (PRD 0010
+	// §Functional 7.5–7.7). `samuel update --agents` re-resolves the
+	// digests from each manifest's published tag.
+	Agents []LockedAgent `toml:"agents,omitempty"`
+}
+
+// LockedAgent records an adapter's pinned container image. Adapter is
+// the adapter name (e.g. "claude"); Image is the digest-pinned OCI
+// reference.
+type LockedAgent struct {
+	Adapter string `toml:"adapter"`
+	Image   string `toml:"image"`
+	Digest  string `toml:"digest,omitempty"`
 }
 
 // LockedPlugin is the resolved-version + signature record for one

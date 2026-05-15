@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://samuelpkg.github.io/samuel/schema/plugin.v2.3.json",
+  "title": "Samuel plugin manifest (v2.3)",
+  "description": "PRD 0010: OCI tier first-class. [oci] gains entrypoint, workdir, cpu_quota, memory_limit; [capabilities.network] gains allowed_hosts.",
+  "type": "object",
+  "required": ["name", "version", "kind"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$",
+      "description": "Plugin name. Lowercase alphanumerics + dash, 2-64 chars."
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver version (X.Y.Z)."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["skill", "wasm", "oci", "meta"]
+    },
+    "summary": { "type": "string" },
+    "homepage": { "type": "string", "format": "uri" },
+    "license": { "type": "string" },
+    "authors": { "type": "array", "items": { "type": "string" } },
+    "samuel": {
+      "type": "object",
+      "properties": {
+        "framework": { "type": "string" },
+        "protocol": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "provides": {
+      "type": "object",
+      "properties": {
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "methodology": { "type": "array", "items": { "type": "string" } },
+        "hooks": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "requires": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "filesystem": {
+          "type": "object",
+          "properties": {
+            "read": { "type": "array", "items": { "type": "string" } },
+            "write": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "exec": { "type": "boolean" },
+        "network": {
+          "type": "object",
+          "properties": {
+            "outbound": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "legacy v2.0 host allowlist (oci tier)."
+            },
+            "hosts": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "wasm-tier deny-by-default host allowlist (PRD 0009)."
+            },
+            "allowed_hosts": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "oci-tier deny-by-default host allowlist (PRD 0010). Hosts here are auto-allowed by the network policy proxy."
+            }
+          },
+          "additionalProperties": false
+        },
+        "env": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "wasm-tier env-key allowlist. Empty = no env passed to guest."
+        },
+        "samuel": {
+          "type": "object",
+          "properties": { "api": { "type": "boolean" } },
+          "additionalProperties": false
+        },
+        "assistant": {
+          "type": "object",
+          "properties": { "invoke": { "type": "boolean" } },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "wasm": {
+      "type": "object",
+      "required": ["module"],
+      "properties": {
+        "module": { "type": "string" },
+        "exports": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "oci": {
+      "type": "object",
+      "required": ["image"],
+      "properties": {
+        "image": {
+          "type": "string",
+          "pattern": "@sha256:[a-f0-9]{64}$",
+          "description": "OCI image reference. MUST be digest-pinned (`ref@sha256:...`)."
+        },
+        "digest": { "type": "string" },
+        "entrypoint": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Overrides the image's default entrypoint."
+        },
+        "workdir": {
+          "type": "string",
+          "description": "Working directory inside the container."
+        },
+        "cpu_quota": {
+          "type": "string",
+          "description": "Passed through as --cpus (Docker/Podman)."
+        },
+        "memory_limit": {
+          "type": "string",
+          "description": "Passed through as --memory (Docker/Podman)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "description": "wasm-tier per-instance budgets (PRD 0009).",
+      "properties": {
+        "max_memory": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeout": { "type": "string" },
+        "hard_timeout": { "type": "string" },
+        "exports": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "wasm" } } },
+      "then": { "required": ["wasm"] }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "oci" } } },
+      "then": { "required": ["oci"] }
+    }
+  ]
+}

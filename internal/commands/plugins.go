@@ -72,6 +72,7 @@ func init() {
 	updateCmd.Flags().Bool("allow-prerelease", false, "Allow prerelease versions during resolution (matches install)")
 	updateCmd.Flags().Bool("non-interactive", false, "Fail-closed on prompts (CI use; matches install)")
 	updateCmd.Flags().Bool("dry-run", false, "Resolve + verify but do not write (matches install)")
+	updateCmd.Flags().Bool("agents", false, "Re-pin every registered agent's container image digest in samuel.lock (PRD 0010 §Functional 7.7)")
 }
 
 // buildService wires the install path against the project's config +
@@ -546,6 +547,10 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return renderStructuredError(err)
 	}
 	all, _ := cmd.Flags().GetBool("all")
+	agentsOnly, _ := cmd.Flags().GetBool("agents")
+	if agentsOnly {
+		return runUpdateAgents(cmd, cwd)
+	}
 	if len(args) == 0 && !all {
 		// Refresh registry indexes + report plugins with updates.
 		_, err := svc.Registry.Refresh(cmd.Context(), svc.Sources)

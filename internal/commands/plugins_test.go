@@ -189,7 +189,8 @@ func TestCLI_InstallSkill_VersionRange(t *testing.T) {
 func TestCLI_InstallOci_PinsDigest(t *testing.T) {
 	defer pinTestEnv(t)()
 	src := t.TempDir()
-	tomlBody := "name = \"claude-runner\"\nversion = \"1.0.0\"\nkind = \"oci\"\n\n[oci]\nimage = \"ghcr.io/samuelpkg/samuel-runner-claude:1.0.0\"\n"
+	digestHex := strings.Repeat("a", 64)
+	tomlBody := "name = \"claude-runner\"\nversion = \"1.0.0\"\nkind = \"oci\"\n\n[oci]\nimage = \"ghcr.io/samuelpkg/samuel-runner-claude@sha256:" + digestHex + "\"\n"
 	if err := os.WriteFile(filepath.Join(src, manifest.FileName), []byte(tomlBody), 0o644); err != nil {
 		t.Fatal(err)
 	}

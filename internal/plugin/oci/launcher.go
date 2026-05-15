@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strings"
 
 	"github.com/samuelpkg/samuel/internal/plugin/capability"
+	"github.com/samuelpkg/samuel/internal/plugin/manifest"
 )
 
 // LaunchOptions parameterizes a `<runtime> run` invocation. The
@@ -28,6 +30,107 @@ type LaunchOptions struct {
 	HostEnv []string
 	// Command overrides the image entrypoint when set.
 	Command []string
+	// Entrypoint overrides the image entrypoint (--entrypoint).
+	// Multi-element entrypoints are joined into the leading position
+	// of the command vector.
+	Entrypoint []string
+	// Workdir sets the container working directory (-w).
+	Workdir string
+	// CPUQuota maps to --cpus (PRD 0010 §Functional 3).
+	CPUQuota string
+	// MemoryLimit maps to --memory (PRD 0010 §Functional 3).
+	MemoryLimit string
+	// ExtraMounts are host-path → container-path bindings derived from
+	// [capabilities.filesystem]. ReadOnly mirrors the manifest's
+	// read/write split.
+	ExtraMounts []CapabilityMount
+	// NetworkPolicyMode forces the --network value, bypassing the
+	// grant-driven default. Empty means "derive from grants". The
+	// network-proxy path in PRD 0010 §Functional 5 sets this to "none"
+	// so the proxy is the only egress.
+	NetworkPolicyMode string
+	// ProxySocket is the host path to the userspace network-policy
+	// proxy socket. When non-empty it is bind-mounted into the
+	// container at /samuel-proxy and the HTTP_PROXY/HTTPS_PROXY env
+	// is injected (PRD 0010 §Functional 5.2).
+	ProxySocket string
+}
+
+// CapabilityMount describes one extra -v bind derived from a manifest
+// [capabilities.filesystem] entry.
+type CapabilityMount struct {
+	HostPath      string
+	ContainerPath string
+	ReadOnly      bool
+}
+
+// CapabilityMountsFromManifest converts a manifest's
+// [capabilities.filesystem] block into the launcher's CapabilityMount
+// list. Read paths land as :ro mounts; write paths overlap by name —
+// when the same path appears in both lists, write wins.
+//
+// Paths that are not already absolute container paths are interpreted
+// relative to /workspace so plugin authors can write
+// `write = ["data"]` instead of `["/workspace/data"]`. The first
+// element of every absolute path becomes both host and container path
+// (the framework owns the project tree → /workspace mapping).
+func CapabilityMountsFromManifest(m *manifest.Manifest, projectDir string) []CapabilityMount {
+	if m == nil {
+		return nil
+	}
+	writes := map[string]struct{}{}
+	for _, p := range m.Capabilities.Filesystem.Write {
+		writes[normalizeContainerPath(p)] = struct{}{}
+	}
+	var out []CapabilityMount
+	seen := map[string]struct{}{}
+	add := func(p string, ro bool) {
+		cp := normalizeContainerPath(p)
+		if _, ok := seen[cp]; ok {
+			return
+		}
+		seen[cp] = struct{}{}
+		host := containerPathToHost(cp, projectDir)
+		out = append(out, CapabilityMount{HostPath: host, ContainerPath: cp, ReadOnly: ro})
+	}
+	for _, p := range m.Capabilities.Filesystem.Read {
+		cp := normalizeContainerPath(p)
+		_, hasWrite := writes[cp]
+		add(p, !hasWrite)
+	}
+	for _, p := range m.Capabilities.Filesystem.Write {
+		add(p, false)
+	}
+	return out
+}
+
+// normalizeContainerPath promotes a glob/relative path to an absolute
+// container path. /workspace is the canonical base for any non-absolute
+// entry.
+func normalizeContainerPath(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return ""
+	}
+	if filepath.IsAbs(p) {
+		return p
+	}
+	return filepath.Join("/workspace", p)
+}
+
+// containerPathToHost maps a container path back onto the host. The
+// /workspace prefix is rewritten to projectDir; any other absolute path
+// is bind-mounted into the container at the same location (used by
+// plugin authors who explicitly opt in to mounting host directories).
+func containerPathToHost(cp, projectDir string) string {
+	switch {
+	case cp == "/workspace":
+		return projectDir
+	case strings.HasPrefix(cp, "/workspace/"):
+		return filepath.Join(projectDir, strings.TrimPrefix(cp, "/workspace/"))
+	default:
+		return cp
+	}
 }
 
 // BuildRunArgs assembles the argument list for `<runtime> run`. The
@@ -68,13 +171,54 @@ func BuildRunArgs(opts LaunchOptions) []string {
 	if opts.Layout.BridgeSocket != "" {
 		args = append(args, "-v", opts.Layout.BridgeSocket+":/samuel-bridge")
 	}
-	args = append(args, "--network", networkPolicy(opts.Grants))
+	// Manifest-declared filesystem mounts (PRD 0010 §Functional 3.1).
+	for _, m := range opts.ExtraMounts {
+		mode := ""
+		if m.ReadOnly {
+			mode = ":ro"
+		}
+		args = append(args, "-v", m.HostPath+":"+m.ContainerPath+mode)
+	}
+	// Network proxy mount + env injection (PRD 0010 §Functional 5.2).
+	if opts.ProxySocket != "" {
+		args = append(args, "-v", opts.ProxySocket+":/samuel-proxy")
+		args = append(args, "-e", "HTTP_PROXY=unix:///samuel-proxy")
+		args = append(args, "-e", "HTTPS_PROXY=unix:///samuel-proxy")
+		args = append(args, "-e", "ALL_PROXY=unix:///samuel-proxy")
+	}
+	// Network policy: explicit override > derived from grants.
+	network := opts.NetworkPolicyMode
+	if network == "" {
+		network = networkPolicy(opts.Grants)
+	}
+	args = append(args, "--network", network)
+
+	// Resource limits (PRD 0010 §Functional 3.3).
+	if opts.CPUQuota != "" {
+		args = append(args, "--cpus", opts.CPUQuota)
+	}
+	if opts.MemoryLimit != "" {
+		args = append(args, "--memory", opts.MemoryLimit)
+	}
+
+	// Working directory + entrypoint override.
+	if opts.Workdir != "" {
+		args = append(args, "-w", opts.Workdir)
+	}
+	if len(opts.Entrypoint) > 0 {
+		args = append(args, "--entrypoint", opts.Entrypoint[0])
+	}
 
 	for _, kv := range filterEnv(opts.HostEnv, opts.EnvAllowlist) {
 		args = append(args, "-e", kv)
 	}
 
 	args = append(args, opts.Image)
+	// When the manifest declares a multi-element entrypoint, the extra
+	// args follow the image (Docker convention).
+	if len(opts.Entrypoint) > 1 {
+		args = append(args, opts.Entrypoint[1:]...)
+	}
 	args = append(args, opts.Command...)
 	return args
 }

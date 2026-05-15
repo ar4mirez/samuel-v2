@@ -138,6 +138,8 @@ nav:
       - Methodology hooks: concepts/methodology-hooks.md
       - 4D methodology: concepts/4d-methodology.md
       - Ralph Wiggum methodology: concepts/ralph-wiggum-methodology.md
+      - OCI runtime: concepts/oci-runtime.md
+      - Network policy: concepts/network-policy.md
   - Plugin Authors:
       - Overview: plugin-authors/index.md
       - Manifest: plugin-authors/manifest.md
@@ -145,6 +147,7 @@ nav:
       - Capabilities: plugin-authors/capabilities.md
       - TinyGo + WASM: plugin-authors/tinygo-wasm.md
       - WASM plugins (v2.2): plugin-authors/wasm.md
+      - OCI plugins (v2.3): plugin-authors/oci.md
       - OCI + gRPC: plugin-authors/oci-grpc.md
       - Signing: plugin-authors/signing.md
   - RFDs:
@@ -159,6 +162,7 @@ nav:
       - "0008: Drop gstack and gbrain from the v2 framework": rfd/0008.md
       - "0009: Plugin signing via Sigstore enforcement (v2.1)": rfd/0009.md
       - "0010: WASM plugin tier — wazero + TinyGo + capability gates": rfd/0010.md
+      - "0011: OCI plugin tier + network policy (v2.3)": rfd/0011.md
   - Plugins:
       - Index: plugins/index.md
   - Reference:

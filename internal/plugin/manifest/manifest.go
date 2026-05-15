@@ -124,12 +124,18 @@ type FilesystemCaps struct {
 	Write []string `toml:"write,omitempty"`
 }
 
-// NetworkCaps lists outbound destination allowlists. `outbound` is the
-// legacy v2.0 field used by skill + oci tiers; `hosts` is the wasm-tier
-// allowlist enforced by the wasiNetwork proxy (PRD 0009).
+// NetworkCaps lists outbound destination allowlists.
+//
+//   - Outbound is the legacy v2.0 field used by skill + oci tiers.
+//   - Hosts is the wasm-tier allowlist enforced by the wasiNetwork
+//     proxy (PRD 0009).
+//   - AllowedHosts is the oci-tier deny-by-default allowlist enforced
+//     by the userspace network proxy (PRD 0010 §Functional 4). Hosts
+//     here are auto-allowed; any other host triggers a consent prompt.
 type NetworkCaps struct {
-	Outbound []string `toml:"outbound,omitempty"`
-	Hosts    []string `toml:"hosts,omitempty"`
+	Outbound     []string `toml:"outbound,omitempty"`
+	Hosts        []string `toml:"hosts,omitempty"`
+	AllowedHosts []string `toml:"allowed_hosts,omitempty"`
 }
 
 // RuntimeBlock carries wasm-tier per-instance budgets (PRD 0009).
@@ -163,12 +169,27 @@ type WasmBlock struct {
 	Exports []string `toml:"exports,omitempty"`
 }
 
-// OCIBlock holds oci-tier-specific fields. Digest is pinned at install
-// time and recorded in samuel.lock — the manifest only carries the
-// floating image reference.
+// OCIBlock holds oci-tier-specific fields. Image MUST be digest-pinned
+// (`ref@sha256:...`) — PRD 0010 §Functional 2 — so that what the user
+// installs is bit-identical to what the manifest declares.
+//
+// Entrypoint / Workdir / CPUQuota / MemoryLimit map straight onto the
+// runtime CLI flags at launch time. They are optional; absent fields
+// inherit the image's defaults.
+//
+//	[oci]
+//	  image        = "ghcr.io/foo/bar@sha256:..."
+//	  entrypoint   = ["/opt/bar/run"]
+//	  workdir      = "/workspace"
+//	  cpu_quota    = "1.5"          # docker/podman --cpus value
+//	  memory_limit = "512m"         # docker/podman --memory value
 type OCIBlock struct {
-	Image  string `toml:"image"`
-	Digest string `toml:"digest,omitempty"`
+	Image       string   `toml:"image"`
+	Digest      string   `toml:"digest,omitempty"`
+	Entrypoint  []string `toml:"entrypoint,omitempty"`
+	Workdir     string   `toml:"workdir,omitempty"`
+	CPUQuota    string   `toml:"cpu_quota,omitempty"`
+	MemoryLimit string   `toml:"memory_limit,omitempty"`
 }
 
 // Load reads and parses the manifest at path. Validation runs on the
@@ -320,8 +341,21 @@ func (m *Manifest) Validate() error {
 			return &errors.Error{
 				Component:   Component,
 				Problem:     "oci manifest missing [oci] image reference",
-				Fix:         "add `[oci] image = \"registry/owner/name:tag\"`",
+				Fix:         "add `[oci] image = \"registry/owner/name@sha256:<digest>\"`",
 				DocsURL:     "https://samuelpkg.github.io/samuel/docs/errors/SAM-MANIFEST-001",
+				Recoverable: true,
+			}
+		}
+		// PRD 0010 §Functional 2 — image MUST be digest-pinned. Tag-only
+		// references would let a registry push silently change the bits
+		// the user installed.
+		if !strings.Contains(m.OCI.Image, "@sha256:") {
+			return &errors.Error{
+				Component:   Component,
+				Problem:     "oci manifest image is not digest-pinned",
+				Path:        m.OCI.Image,
+				Fix:         "append @sha256:<64-hex-digest> to the [oci] image reference",
+				DocsURL:     "https://samuelpkg.github.io/samuel/docs/plugin-authors/oci",
 				Recoverable: true,
 			}
 		}

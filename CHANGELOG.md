@@ -7,7 +7,116 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Removed in-tree reference plugin sources** under `examples/`. The
+  wasm-tier reference (`samuel-go-guide-wasm`, last in-tree at v0.1.3)
+  and the oci-tier reference (`samuel-claude-code-oci`, freshly split
+  v0.1.0) now live in their own GitHub repos. `examples/` retains
+  only the runtime fixtures (`tetris/`) consumed by methodology
+  tests. Stale in-tree copies, which had drifted only in comment
+  wording vs upstream, were removed; framework comments and CHANGELOG
+  entries point at the GitHub repos directly.
+- **`samuel new plugin --kind=oci`** scaffold pins
+  `sigstore/cosign-installer@v3` to cosign **v3.0.6** —
+  `--new-bundle-format` on `cosign sign` (image) requires cosign
+  2.5.0+. Without the pin, the v0.1.0 release of
+  `samuel-claude-code-oci` failed on the signing step; the framework
+  scaffold inherits the same fix.
+
+## [v2.3.0] — OCI plugin tier first-class (network policy + agent containerization)
+
+v2.0 scaffolded `internal/plugin/oci/` but the tier lacked container
+runtime detection, capability enforcement at the OCI boundary, a
+network policy decision, agent containerization, and a reference
+plugin. v2.3 lands all five and makes OCI a first-class authoring
+path alongside skills and WASM.
+
+Design rationale: [RFD 0011](docs/rfd/0011.md). Tracking PRD:
+[`.samuel/tasks/0010-prd-oci-plugin-tier.md`](.samuel/tasks/0010-prd-oci-plugin-tier.md).
+
 ### Added
+
+- **Container runtime detection** at
+  [`internal/plugin/oci/runtime.go`](internal/plugin/oci/runtime.go).
+  Resolves rootless Podman → root Podman → Docker; honors
+  `SAMUEL_RUNTIME` override. Cached per-process. Version probed
+  via `<runtime> version` and surfaced through `samuel doctor`.
+- **Manifest schema v2.3** at
+  [`internal/plugin/manifest/schema/plugin.v2.3.json`](internal/plugin/manifest/schema/plugin.v2.3.json).
+  Adds `[oci]` fields: `entrypoint`, `workdir`, `cpu_quota`,
+  `memory_limit`. `[oci].image` MUST be digest-pinned
+  (`ref@sha256:...`); tag-only refs are rejected at parse time.
+  `[capabilities.network] allowed_hosts` lists hosts auto-allowed
+  by the network policy proxy.
+- **Capability enforcement at the OCI boundary** at
+  [`internal/plugin/oci/launcher.go`](internal/plugin/oci/launcher.go).
+  Filesystem mounts derived from `[capabilities.filesystem]`
+  (read-only unless write declared), env strictly allowlisted via
+  `-e`, resource limits passed through as `--cpus` / `--memory`,
+  workdir + entrypoint overrides honored.
+- **Deny-by-default network policy** at
+  [`internal/plugin/oci/policy/`](internal/plugin/oci/policy/).
+  Per-call consent prompts with persistence at
+  `~/.samuel/policy/network.toml` and an append-only audit log at
+  `~/.samuel/policy/audit.log`. Decisions: allow-once, allow-always,
+  deny, deny-forever. `SAMUEL_POLICY` env hook: `deny-all`,
+  `allow-once`, `allow-all` for CI flows.
+- **Userspace network proxy** at
+  [`internal/plugin/oci/policy/proxy/`](internal/plugin/oci/policy/proxy/).
+  HTTP + HTTPS (CONNECT) brokering over a Unix socket bind-mounted
+  at `/samuel-proxy`. DNS lookups go through the proxy; raw-IP
+  destinations never match hostname allowlists.
+- **`samuel policy` subcommands** at
+  [`internal/commands/policy.go`](internal/commands/policy.go):
+  `list`, `reset`, `reset --plugin <name>`, `prompt`, `preauth`.
+  JSON mode supported on `list`.
+- **`samuel new plugin --kind=oci`** scaffolding at
+  [`internal/commands/new.go`](internal/commands/new.go).
+  Produces `samuel-plugin.toml` (digest-placeholder), Containerfile,
+  Makefile, README, and a cosign-signing GitHub Actions release
+  workflow.
+- **`samuel update --agents`** at
+  [`internal/commands/update_agents.go`](internal/commands/update_agents.go).
+  Re-pins each registered adapter's default container image digest
+  in samuel.lock (PRD 0010 §Functional 7.7).
+- **`samuel run --sandbox=oci`** containerizes the agent. Host mode
+  (`--sandbox=host`) preserved for development. v2.3 ships OCI as
+  opt-in; v2.4 flips the default after the 2-week soak.
+- **`samuel doctor`** reports detected runtime, version, and image
+  cache size under the `oci-runtime` check; flags manifest/lockfile
+  digest drift on installed OCI plugins.
+- **Reference plugin** at
+  [`samuelpkg/samuel-claude-code-oci`](https://github.com/samuelpkg/samuel-claude-code-oci).
+  Packages Claude Code as an OCI plugin with manifest, Containerfile,
+  Makefile, and a multi-arch cosign-keyless release workflow. Lived
+  in-tree under `examples/samuel-claude-code-oci/` during the v2.3 dev
+  cycle; split out to its own repo on 2026-05-15.
+- **Hermetic e2e** at
+  [`e2e/hermetic/oci_test.go`](e2e/hermetic/oci_test.go)
+  (build tag `e2e_oci`, auto-skips when no runtime is detected).
+- **Live e2e** at
+  [`e2e/live/oci_live_test.go`](e2e/live/oci_live_test.go)
+  (`SAMUEL_LIVE_OCI_PLUGIN=1`).
+- **`docs/plugin-authors/oci.md`** — author walkthrough.
+- **`docs/concepts/oci-runtime.md`** — runtime detection + cache.
+- **`docs/concepts/network-policy.md`** — deny-by-default rationale,
+  consent flow, CI patterns.
+- **RFD 0011** at [`docs/rfd/0011.md`](docs/rfd/0011.md). Documents
+  why deny-by-default with consent over host-only / regex allowlists.
+
+### Changed
+
+- **`samuel run --sandbox`** accepts `host` (PRD 0010 spelling) in
+  addition to the legacy `none`. Both map to host-exec; `oci` opts
+  into the containerized agent path.
+- **`samuel doctor --json`** envelope gains an `oci-runtime` entry
+  with structured engine + version + cache fields.
+- **Cobra flag reset** during tests (`ResetFlagsForTest`) now
+  recurses into nested subcommand groups, fixing leakage between
+  `policy <subcommand>` test invocations.
+
+### Added (continued, carried from prior unreleased)
 
 - **`SAMUEL_VERIFY_ALLOW_UNSIGNED` env hook** at
   [`internal/commands/plugins.go`](internal/commands/plugins.go).
@@ -17,7 +126,7 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   workflows; documented in
   [`docs/plugin-authors/signing.md`](docs/plugin-authors/signing.md).
 
-### Fixed
+### Fixed (carried from prior unreleased)
 
 - **Wasm-tier release fetch** at
   [`internal/plugin/source/github_release.go`](internal/plugin/source/github_release.go).
@@ -105,13 +214,14 @@ Design rationale: [RFD 0010](docs/rfd/0010.md). Tracking PRD:
   `TestWASM_Live_InstallReference`, `TestWASM_Live_InvokeReference`.
   Skips by default; set `SAMUEL_LIVE_WASM_PLUGIN=1` once the
   reference plugin lands in the public registry.
-- **Reference plugin source** at
-  [`examples/samuel-go-guide-wasm/`](examples/samuel-go-guide-wasm/).
+- **Reference plugin** at
+  [`samuelpkg/samuel-go-guide-wasm`](https://github.com/samuelpkg/samuel-go-guide-wasm).
   TinyGo port of the existing `samuel-go-guide` skill with a shared
   `internal/rules/` package (same lint rules in skill + wasm),
   capability-locked manifest, release workflow targeting cosign
-  keyless OIDC. The directory splits out to its own repo before the
-  stable v2.2.0 tag.
+  keyless OIDC. Lived in-tree under `examples/samuel-go-guide-wasm/`
+  during the v2.2 dev cycle; split out to its own repo (latest
+  release v0.1.3).
 - **`docs/plugin-authors/wasm.md`** — full author walkthrough: when
   to choose WASM, toolchain, manifest reference, capability model,
   cold-start budget, debugging, restrictions, release flow.
