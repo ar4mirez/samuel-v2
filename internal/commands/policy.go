@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -188,13 +187,4 @@ func runPolicyPreauth(cmd *cobra.Command, _ []string) error {
 	}
 	ui.Print("Pre-%s %s × %s", action, pluginName, host)
 	return nil
-}
-
-// formatHostPort is a tiny convenience used by callers that want a
-// canonical host:port form for an audit log row.
-func formatHostPort(host string, port int) string {
-	if port <= 0 {
-		return host
-	}
-	return host + ":" + strings.TrimPrefix(fmt.Sprintf("%d", port), "")
 }

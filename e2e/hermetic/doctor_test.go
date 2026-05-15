@@ -16,7 +16,10 @@ func TestDoctor_FrameworkChecksPass(t *testing.T) {
 	out := p.mustSamuel("doctor")
 	assertContains(t, out, "samuel-builtins", "doctor must run framework check")
 	assertContains(t, out, "project-layout", "doctor must run layout check")
-	assertContains(t, out, "Summary: 2 passed", "fresh project should report 2 framework checks pass")
+	// PRD 0010 §Functional 11: doctor reports the OCI runtime check
+	// even when no runtime is detected (informational, OK=true).
+	assertContains(t, out, "oci-runtime", "doctor must run OCI runtime check")
+	assertContains(t, out, "Summary: 3 passed", "fresh project should report 3 framework checks pass (builtins + layout + oci-runtime)")
 }
 
 func TestDoctor_PrintsVerifierAdvisory(t *testing.T) {
